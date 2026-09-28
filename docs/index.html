@@ -642,22 +642,36 @@ existing canvas block, preserve every unrelated setting and change only what is 
 the exact replacement [mcp_servers.canvas] block using this checkout's real absolute paths, with
 "--writes", "confirm" and default_tools_approval_mode = "writes". Do not enable rubrics. If the
 existing entry cannot be merged safely, stop. If approvals_reviewer is "auto_review" or missing,
-show the exact top-level approvals_reviewer = "user" line and where it belongs. Tell me how to
-back up and open config.toml, exactly what to replace, and to restart Codex. Do not print
-unrelated configuration or append a duplicate canvas server block.</pre>
+show the exact top-level approvals_reviewer = "user" line and where it belongs. Give me exact
+commands for my operating system that create a uniquely named backup without overwriting any
+existing path, then open ~/.codex/config.toml in a plain-text editor. Do not refer me to an
+"Open config.toml" button in the desktop Settings screen; that documented control belongs to the
+Codex IDE extension. Tell me exactly what to replace and to restart Codex. Do not print unrelated
+configuration or append a duplicate canvas server block.</pre>
             <button class="copy-button" type="button" data-copy-target="writes-prompt">Copy prompt</button>
           </div>
           <p class="copy-status" role="status" aria-live="polite"></p>
 
           <div class="two-column" style="margin-top: 26px;">
             <div class="detail-box">
-              <h3>Then make one manual edit</h3>
+              <h3>Then open one file—not Codex Settings</h3>
+              <p>The current desktop Settings screen does not expose the documented <strong>Open config.toml</strong> control. That control is for the Codex IDE extension.</p>
               <ol>
-                <li>Back up <span class="inline-code">~/.codex/config.toml</span>.</li>
-                <li>Open Codex Settings → <strong>Open config.toml</strong> (or open that file in a text editor).</li>
-                <li>Replace the existing <span class="inline-code">[mcp_servers.canvas]</span> block with the block Codex printed. Do not add a second block.</li>
-                <li>Save the file and restart Codex.</li>
+                <li>On macOS, open <strong>Terminal</strong> and run the command below. It creates a unique backup, prints its location, and opens the real file in a plain-text editor.</li>
               </ol>
+              <div class="code-wrap">
+                <pre id="open-config-command">backup_dir="$(mktemp -d "$HOME/.codex/canvas-mcp-config-backup.XXXXXX")" &amp;&amp;
+cp -p "$HOME/.codex/config.toml" "$backup_dir/config.toml" &amp;&amp;
+cmp -s "$HOME/.codex/config.toml" "$backup_dir/config.toml" &amp;&amp;
+printf 'Verified backup: %s\n' "$backup_dir/config.toml" &amp;&amp;
+open -t "$HOME/.codex/config.toml"</pre>
+                <button class="copy-button" type="button" data-copy-target="open-config-command">Copy command</button>
+              </div>
+              <ol start="2">
+                <li>In the editor that opens, replace the existing <span class="inline-code">[mcp_servers.canvas]</span> block with the block Codex printed. Do not add a second block.</li>
+                <li>Save the file, close and reopen Codex, then ask Codex to verify the Canvas server configuration.</li>
+              </ol>
+              <p class="microcopy">On Windows, ask Codex for the equivalent PowerShell backup-and-open commands; the complete Windows setup path is not yet tested.</p>
             </div>
             <aside class="detail-box">
               <h3>Where future confirmations appear</h3>

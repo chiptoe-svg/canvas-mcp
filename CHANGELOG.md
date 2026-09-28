@@ -13,6 +13,10 @@ example changed, because those are copied by hand.
   provide a Codex prompt that prepares write settings without editing configuration, and add
   separate prompts to refresh the matching skill or update the tagged project and skill together.
   `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
+- Corrected the write-setup instructions: the documented **Open config.toml** control belongs to
+  the Codex IDE extension, not the current desktop Settings screen. The guide now gives a macOS
+  command that creates a unique backup and opens the real configuration in a plain-text editor.
+  `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
 - `uninstall.py` now checks nested release directories against an explicit file manifest, so an
   unrelated file placed inside `docs/`, `examples/`, `extensions/` or `tests/` keeps the project
   folder from being deleted.

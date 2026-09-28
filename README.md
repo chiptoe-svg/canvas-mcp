@@ -220,16 +220,32 @@ existing canvas block, preserve every unrelated setting and change only what is 
 the exact replacement [mcp_servers.canvas] block using this checkout's real absolute paths, with
 "--writes", "confirm" and default_tools_approval_mode = "writes". Do not enable rubrics. If the
 existing entry cannot be merged safely, stop. If approvals_reviewer is "auto_review" or missing,
-show the exact top-level approvals_reviewer = "user" line and where it belongs. Tell me how to
-back up and open config.toml, exactly what to replace, and to restart Codex. Do not print
-unrelated configuration or append a duplicate canvas server block.
+show the exact top-level approvals_reviewer = "user" line and where it belongs. Give me exact
+commands for my operating system that create a uniquely named backup without overwriting any
+existing path, then open ~/.codex/config.toml in a plain-text editor. Do not refer me to an
+"Open config.toml" button in the desktop Settings screen; that documented control belongs to the
+Codex IDE extension. Tell me exactly what to replace and to restart Codex. Do not print unrelated
+configuration or append a duplicate canvas server block.
 ```
 
-Codex prints the exact replacement block but does not edit your configuration. Back up
-`~/.codex/config.toml`, open it from Codex Settings with **Open config.toml** (or use a text
-editor), replace the existing `[mcp_servers.canvas]` block, save, and restart Codex. When you
-later request a real change, the approval and canvas-mcp confirmation appear inside Codex. The
-terminal is used only for the hidden token prompt and optional manual setup commands.
+Codex prints the exact replacement block but does not edit your configuration. The current
+desktop Settings screen does not expose the documented **Open config.toml** control; that control
+is for the Codex IDE extension. On macOS, open Terminal and run:
+
+```sh
+backup_dir="$(mktemp -d "$HOME/.codex/canvas-mcp-config-backup.XXXXXX")" &&
+cp -p "$HOME/.codex/config.toml" "$backup_dir/config.toml" &&
+cmp -s "$HOME/.codex/config.toml" "$backup_dir/config.toml" &&
+printf 'Verified backup: %s\n' "$backup_dir/config.toml" &&
+open -t "$HOME/.codex/config.toml"
+```
+
+This creates a uniquely named backup, prints its location, and opens the real file in a
+plain-text editor. Replace the existing `[mcp_servers.canvas]` block, save, close and reopen
+Codex, then ask Codex to verify the Canvas server configuration. On Windows, ask Codex for the
+equivalent PowerShell backup-and-open commands; the complete Windows setup path is not yet
+tested. When you later request a real change, the approval and canvas-mcp confirmation appear
+inside Codex.
 
 For the manual route, run `connect_canvas.py setup-info` in Terminal to print advanced settings
 with the real paths for this checkout. That advanced block includes the optional rubric extension;
