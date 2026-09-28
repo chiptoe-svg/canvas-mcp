@@ -21,4 +21,5 @@ First version.
 - `uninstall.py`: removes the token, settings, skill copy, `.venv` and, after you type its
   name, the project folder. It never deletes a folder that holds files canvas-mcp did not put
   there. It names the Codex config server to delete by hand.
+- `AGENTS.md`: instructions for AI coding agents working on this repository.
 - New files: `SKILL.md` and `examples/codex-mcp-config.example.toml`.

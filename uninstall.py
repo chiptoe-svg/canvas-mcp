@@ -40,7 +40,7 @@ import config
 PROJECT_MARKERS = ("canvas_mcp.py", "connect_canvas.py", "canvas_client.py", "config.py", "uninstall.py")
 # Everything a release ships at the top level, plus what setup and tests create. A folder
 # holding anything else is not deleted. tests/test_uninstall.py checks this list is complete.
-RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SKILL.md", "pyproject.toml", ".gitignore",
+RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SKILL.md", "AGENTS.md", "pyproject.toml", ".gitignore",
                    "canvas_mcp.py", "canvas_client.py", "config.py", "connect_canvas.py",
                    "uninstall.py", "extensions", "tests", "examples"}
 GENERATED_ENTRIES = {".git", ".venv", "__pycache__", ".pytest_cache", "canvas_mcp.egg-info",

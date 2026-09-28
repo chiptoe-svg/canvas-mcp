@@ -303,5 +303,6 @@ The code is meant to be read:
 | `extensions/rubrics.py` | The optional rubric tools |
 | `tests/` | Tests against an in-memory fake Canvas; no network |
 
+If you change it with an AI coding agent, `AGENTS.md` gives the agent the project's rules.
 Run `pytest` after any change. The tests encode the safety rules, so a failing test usually
 means a rule was loosened.
