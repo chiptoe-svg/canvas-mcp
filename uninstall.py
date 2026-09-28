@@ -42,10 +42,25 @@ PROJECT_MARKERS = ("canvas_mcp.py", "connect_canvas.py", "canvas_client.py", "co
 # holding anything else is not deleted. tests/test_uninstall.py checks this list is complete.
 RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SKILL.md", "AGENTS.md", "pyproject.toml", ".gitignore",
                    "canvas_mcp.py", "canvas_client.py", "config.py", "connect_canvas.py",
-                   "uninstall.py", "extensions", "tests", "examples"}
+                   "uninstall.py", "extensions", "tests", "examples", "docs"}
+RELEASE_NESTED_FILES = {
+    "docs/index.html",
+    "examples/codex-mcp-config.example.toml",
+    "extensions/__init__.py",
+    "extensions/rubrics.py",
+    "tests/conftest.py",
+    "tests/fake_canvas.py",
+    "tests/test_client.py",
+    "tests/test_config.py",
+    "tests/test_connect.py",
+    "tests/test_rubrics.py",
+    "tests/test_server.py",
+    "tests/test_uninstall.py",
+}
+RELEASE_DIRECTORIES = {name.split("/", 1)[0] for name in RELEASE_NESTED_FILES}
 GENERATED_ENTRIES = {".git", ".venv", "__pycache__", ".pytest_cache", "canvas_mcp.egg-info",
                      ".DS_Store", "Thumbs.db", "desktop.ini"}      # the last three: Finder / Explorer
-_GENERATED_NESTED = re.compile(r"(^|/)(\.venv|__pycache__|\.pytest_cache|[^/]*\.egg-info)/?$"
+_GENERATED_NESTED = re.compile(r"(^|/)(\.venv|__pycache__|\.pytest_cache|[^/]*\.egg-info)(/|$)"
                                r"|\.py[cod]$|(^|/)(\.DS_Store|Thumbs\.db|desktop\.ini)$")
 SKILL_NAME = "canvas-mcp"
 
@@ -77,9 +92,26 @@ def check_project_dir(path: Path) -> Path:
 
 
 def foreign_entries(project: Path) -> list[str]:
-    """Top-level entries that canvas-mcp neither ships nor creates."""
+    """Entries that canvas-mcp neither ships nor creates, including inside release folders."""
     known = RELEASE_ENTRIES | GENERATED_ENTRIES
-    return sorted(p.name for p in project.iterdir() if p.name not in known)
+    foreign = {p.name for p in project.iterdir() if p.name not in known}
+    for directory in RELEASE_DIRECTORIES:
+        root = project / directory
+        if not root.is_dir() or root.is_symlink():
+            continue
+        for path in root.rglob("*"):
+            relative = path.relative_to(project).as_posix()
+            if path.is_symlink():                  # uninstall removes the link, never its target
+                continue
+            if _GENERATED_NESTED.search(relative):
+                continue
+            if path.is_dir():
+                if any(name.startswith(relative + "/") for name in RELEASE_NESTED_FILES):
+                    continue
+            elif relative in RELEASE_NESTED_FILES:
+                continue
+            foreign.add(relative)
+    return sorted(foreign)
 
 
 # ------------------------------------------------------------------------------ checks

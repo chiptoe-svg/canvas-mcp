@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .dashboard/
+design-qa.md
 # never commit a token or a local env file
 .env
 .env.*

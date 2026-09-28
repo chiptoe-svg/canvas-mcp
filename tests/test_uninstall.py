@@ -136,6 +136,21 @@ def test_folder_with_foreign_files_is_never_deleted(env, capsys):
     assert not token_stored()
 
 
+def test_foreign_file_inside_release_directory_is_never_deleted(env, capsys):
+    docs = env["project"] / "docs"
+    docs.mkdir()
+    (docs / "index.html").write_text("shipped page")
+    private = docs / "private-course-notes.txt"
+    private.write_text("keep me")
+
+    rc = uninstall.main([], project_dir=env["project"], input_fn=answers("y"))
+
+    out = capsys.readouterr().out
+    assert rc == 0 and "docs/private-course-notes.txt" in out
+    assert private.read_text() == "keep me" and env["project"].exists()
+    assert not (env["project"] / ".venv").exists() and not token_stored()
+
+
 def test_marker_files_are_deleted_last(env, monkeypatch):
     order = []
     real_unlink, real_rmtree = Path.unlink, uninstall.shutil.rmtree

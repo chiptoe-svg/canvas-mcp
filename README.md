@@ -4,6 +4,9 @@ A small, local MCP server that lets Codex read — and, only if you turn it on, 
 own** Canvas account. It is a Python project you download, read, and edit. It is not a hosted
 service, not an app your institution runs, and nobody supports it for you.
 
+**New here?** Use the [visual setup guide](https://chiptoe-svg.github.io/canvas-mcp/) for a
+step-by-step installation, write opt-in, safety, and uninstall walkthrough.
+
 - **Local only.** Codex starts it as a child process over stdio. There is no server to host, no
   open port, no tunnel, no background service, and no OAuth app.
 - **Your account, your token.** You create a Canvas personal access token and it is stored only
@@ -47,10 +50,11 @@ With `--enable-rubrics`, four more tools create rubrics and grade with them. See
 `SKILL.md` is a short Codex skill describing how to use these tools for everyday instructor
 work: summarising activity, finding late work, drafting feedback and announcements.
 
-Every request is locked to your configured `https://` Canvas host and `/api/v1`. The server
-refuses absolute URLs, other hosts, `..` and percent-encoded paths, and redirects (following one
-would send your token elsewhere). It also refuses the Canvas endpoints that create or list
-access tokens and developer keys, because they would put a credential in front of the model.
+Every REST request is locked to your configured `https://` Canvas host and `/api/v1`. The only
+path exception is the single fixed GraphQL post-policy mutation used by guarded rubric grading.
+The server refuses absolute URLs, other hosts, `..` and percent-encoded paths, and redirects
+(following one would send your token elsewhere). It also refuses the Canvas endpoints that create
+or list access tokens and developer keys, because they would put a credential in front of the model.
 
 ## Set up with Codex
 

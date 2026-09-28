@@ -4,6 +4,15 @@ Each release is an immutable Git tag (`vX.Y.Z`). Update by fetching tags and sel
 release; see the README's "Updating" section. Entries say when `SKILL.md` or the Codex config
 example changed, because those are copied by hand.
 
+## Unreleased
+
+- Added a framework-free GitHub Pages guide covering beginner setup, the read-only-first flow,
+  optional writes and rubrics, safety boundaries, and uninstall. `SKILL.md` and
+  `examples/codex-mcp-config.example.toml` are unchanged.
+- `uninstall.py` now checks nested release directories against an explicit file manifest, so an
+  unrelated file placed inside `docs/`, `examples/`, `extensions/` or `tests/` keeps the project
+  folder from being deleted.
+
 ## [0.1.0] - 2026-09-28
 
 First version.
