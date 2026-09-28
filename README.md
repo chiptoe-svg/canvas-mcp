@@ -19,6 +19,7 @@ real courses. This project makes no assumption about any particular institution.
 ## Contents
 
 - [What it can do](#what-it-can-do)
+- [Set up with Codex](#set-up-with-codex)
 - [Setup on macOS](#setup-on-macos)
 - [Setup on Windows](#setup-on-windows)
 - [Connect Canvas](#connect-canvas)
@@ -51,18 +52,56 @@ refuses absolute URLs, other hosts, `..` and percent-encoded paths, and redirect
 would send your token elsewhere). It also refuses the Canvas endpoints that create or list
 access tokens and developer keys, because they would put a credential in front of the model.
 
+## Set up with Codex
+
+The easiest setup is to let Codex do the mechanical work while you keep control of the one
+secret step. Paste the prompt below into a **local** Codex task. It installs a tagged source
+checkout, not a global application: there is no daemon, open port, telemetry or auto-update.
+
+```text
+Set up canvas-mcp release v0.1.0 from https://github.com/chiptoe-svg/canvas-mcp.git in
+~/canvas-mcp. If that path already exists, do not overwrite it: inspect it and tell me what is
+there. Confirm that the remote tag v0.1.0 exists before cloning. If it does not, stop and tell me;
+never substitute the moving main branch or an untagged commit. After cloning, read AGENTS.md
+before doing anything else. Confirm Git and Python 3.10+ are available, report the exact
+checked-out tag and commit, create .venv, run
+.venv/bin/pip install -e ".[test]", and run .venv/bin/pytest -q. Never ask me to put a Canvas
+token in chat, a command, a file, or an environment variable. Run
+.venv/bin/python connect_canvas.py status. If it is not connected,
+show me the exact .venv/bin/python connect_canvas.py connect command to run myself in a visible
+terminal at its hidden prompt, then stop and wait. After I say that is done, run status again.
+With my authorization in this prompt, register only the read-only server using `codex mcp add`
+and the absolute paths from this checkout; do not enable writes or rubrics, and do not replace an
+existing `canvas` MCP entry. Copy SKILL.md to ~/.codex/skills/canvas-mcp/SKILL.md, then verify the
+server with `codex mcp get canvas`. Report every change and tell me to restart Codex. Do not make
+any Canvas write while setting this up.
+```
+
+The only step Codex must not perform for you is entering the Canvas URL and access token. Run the
+command it prints in a terminal you control; the token prompt is hidden. The first setup is
+deliberately read-only. After you have used reads successfully, see [Write approval](#write-approval)
+to opt into changes and the optional rubric tools.
+
+At any time, this checkout can print its exact connection command, read-only `codex mcp add`
+command and advanced configuration block without changing anything:
+
+```sh
+.venv/bin/python connect_canvas.py setup-info
+```
+
 ## Setup on macOS
 
 You need Python 3.10 or newer (`python3 --version`) and Git.
 
 ```sh
-git clone https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.0 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
 python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-`pip install -e .` installs the three dependencies (`mcp`, `keyring`, `anyio`) into `.venv`.
+`pip install -e .` installs the three direct dependencies (`mcp`, `keyring`, `anyio`) and their
+transitive dependencies into `.venv`.
 The project runs in place from this folder, so your own edits take effect directly.
 
 To run the tests (no Canvas account or token needed):
@@ -74,11 +113,12 @@ To run the tests (no Canvas account or token needed):
 
 ## Setup on Windows
 
-Install Python 3.10+ from python.org (tick "Add python.exe to PATH") and Git for Windows. In
-PowerShell:
+The core connection path is designed for Windows, but the full setup and uninstall workflow has
+not yet been tested on a Windows computer. Install Python 3.10+ from python.org and Git for
+Windows. In PowerShell:
 
 ```powershell
-git clone https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.0 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
 py -m venv .venv
 .venv\Scripts\pip install -e .
@@ -109,6 +149,7 @@ Other commands:
 | `connect_canvas.py status` | Shows the URL, where the token is stored, and whether Canvas still accepts it. |
 | `connect_canvas.py reconnect` | Replaces the token, and optionally the URL. Use it when a token expires. |
 | `connect_canvas.py disconnect` | Deletes the stored token and the saved URL from this computer. |
+| `connect_canvas.py setup-info` | Prints exact connection and Codex setup instructions; changes nothing. |
 
 Disconnecting does not revoke the token in Canvas. To revoke it, delete it under **Approved
 Integrations**.
@@ -116,11 +157,30 @@ Integrations**.
 The token cannot be passed as a command-line argument, environment variable or file. It is only
 ever typed at the hidden prompt.
 
+If the URL is malformed or unsafe (for example, `http://`, an IP address, a URL with a path, or a
+host containing credentials), the connector explains the problem and asks again before requesting
+a token. It prints the normalized HTTPS destination immediately before the hidden token prompt;
+check that hostname carefully. A valid-looking but incorrect hostname cannot be identified from
+its spelling alone. If Canvas rejects the URL/token pair or the host cannot be reached, nothing is
+saved and you can run the connection command again.
+
 ## Add it to Codex
 
-Codex reads MCP servers from `~/.codex/config.toml` (Windows: `%USERPROFILE%\.codex\config.toml`).
-This project never edits that file for you. Copy the block from
-[`examples/codex-mcp-config.example.toml`](examples/codex-mcp-config.example.toml), and replace
+This project never edits Codex configuration. For a read-only server, use Codex's configuration
+command with the absolute paths to your clone:
+
+```sh
+codex mcp add canvas -- /Users/you/canvas-mcp/.venv/bin/python /Users/you/canvas-mcp/canvas_mcp.py
+codex mcp get canvas
+```
+
+If a server named `canvas` already exists, inspect it first; do not remove or replace it blindly.
+You can also add a stdio server in **Codex Settings > MCP servers**. Restart Codex after adding
+it, then use `/mcp` to confirm it is connected and ask something like "list my Canvas courses."
+
+For finer settings, Codex reads MCP servers from `~/.codex/config.toml` (Windows:
+`%USERPROFILE%\.codex\config.toml`). Copy the block from
+[`examples/codex-mcp-config.example.toml`](examples/codex-mcp-config.example.toml) and replace
 the paths with the absolute paths to your clone.
 
 ```toml
@@ -129,8 +189,7 @@ command = "/Users/you/canvas-mcp/.venv/bin/python"
 args = ["/Users/you/canvas-mcp/canvas_mcp.py"]
 ```
 
-That starts the server read-only. Restart Codex and ask it something like "list my Canvas
-courses".
+That block also starts the server read-only.
 
 To use the skill, copy `SKILL.md` to `~/.codex/skills/canvas-mcp/SKILL.md`.
 
@@ -139,11 +198,19 @@ To use the skill, copy `SKILL.md` to `~/.codex/skills/canvas-mcp/SKILL.md`.
 Writes are **off** by default. Every `apply` tool then refuses and sends nothing. The preview
 still shows the exact change, so you can make it yourself in Canvas.
 
-To allow writes, add `"--writes", "confirm"` to `args`:
+Enable writes only after read-only use is working. Run `connect_canvas.py setup-info` to print
+advanced settings with the real paths for this checkout. Merge them carefully rather than
+appending the whole fragment blindly: its top-level `approvals_reviewer` line must appear before
+every `[table]` in `config.toml`. Or add `"--writes", "confirm"` to the existing server's `args`:
 
 ```toml
 args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm"]
 ```
+
+To add the optional rubric tools, also add `"--enable-rubrics"` and set
+`tool_timeout_sec = 600`. A 50-student grading batch can exceed Codex's default tool timeout.
+Keep `default_tools_approval_mode = "writes"` on this server and `approvals_reviewer = "user"`
+as a top-level setting. Do not enable writes or rubrics merely to test the installation.
 
 In `confirm` mode, before any `apply` tool sends anything, **the server itself** asks you through
 an MCP confirmation dialog (an "elicitation") that repeats the exact request. It proceeds only if
@@ -227,23 +294,25 @@ How grading protects you:
 
 ## Updating
 
-Updates come only as tagged releases (`v0.1.0`, `v0.2.0`, …), each described in `CHANGELOG.md`.
-Nothing updates itself. To update:
+Published versions are immutable Git tags (`v0.1.0`, `v0.2.0`, …), each described in
+`CHANGELOG.md`. Nothing updates itself. Do not treat the moving `main` branch as a release. To
+move an unedited checkout to a specific published version:
 
 ```sh
 cd canvas-mcp
-git status                  # see whether you have local edits
-git pull --ff-only          # take the new release only if it applies cleanly
+git status                  # stop and ask Codex for help if this shows local edits
+git fetch --tags
+git switch --detach v0.2.0  # replace with the release you reviewed
 .venv/bin/pip install -e .  # picks up any new dependency
 .venv/bin/pytest            # optional: confirm it still passes
 ```
 
-`--ff-only` never merges into or overwrites your local changes. If you have edited tracked
-files, it stops with an error and leaves everything as it was. Your options then:
+Record the tag and commit Codex reports. If you edit this project, create a branch first rather
+than editing a detached release checkout. If `git status` shows changes, do not switch releases
+until you have reviewed and saved them. Common options for an experienced Git user are:
 
-- Keep your edits on your own branch (`git switch -c my-changes`, commit), update `main`, then
-  `git rebase main` on your branch.
-- Or `git stash`, `git pull --ff-only`, `git stash pop`, and resolve anything Git reports.
+- Keep your edits on your own branch (`git switch -c my-changes`, then commit them).
+- Ask Codex to compare your branch with the new tag and help carry the changes forward.
 
 Read `CHANGELOG.md` before updating. It says when a release changes `SKILL.md` (copy it to
 `~/.codex/skills/canvas-mcp/` again) or the Codex config example.

@@ -1,10 +1,10 @@
 # Changelog
 
-Each release is a Git tag (`vX.Y.Z`). Update with `git pull --ff-only`; see the README's
-"Updating" section. Entries say when `SKILL.md` or the Codex config example changed, because
-those are copied by hand.
+Each release is an immutable Git tag (`vX.Y.Z`). Update by fetching tags and selecting a named
+release; see the README's "Updating" section. Entries say when `SKILL.md` or the Codex config
+example changed, because those are copied by hand.
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-09-28
 
 First version.
 
@@ -23,3 +23,16 @@ First version.
   there. It names the Codex config server to delete by hand.
 - `AGENTS.md`: instructions for AI coding agents working on this repository.
 - New files: `SKILL.md` and `examples/codex-mcp-config.example.toml`.
+- `README.md`: added a copy-and-paste Codex setup flow that installs a tagged local checkout,
+  registers read-only access first with `codex mcp add`, verifies the server, and leaves writes
+  and rubrics as a separate opt-in. It stops rather than silently substituting `main` when the
+  requested release tag is absent. Corrected dependency and tagged-update wording.
+- `connect_canvas.py`: `setup-info` prints exact commands and the advanced config block without
+  editing Codex configuration; status and errors now name the active Python and absolute script.
+- The connection prompt now explains malformed or unsafe Canvas URLs and asks again before the
+  hidden token prompt. It displays the normalized HTTPS token destination for a final visual check.
+- Connection persistence is transactional across settings failures: a first connection removes
+  the new token, while reconnect restores the prior token and settings. Settings permissions are
+  applied to the temporary file before it atomically replaces the old file.
+- `examples/codex-mcp-config.example.toml`: the advanced block now explicitly uses
+  `default_tools_approval_mode = "writes"`. `SKILL.md` is unchanged.

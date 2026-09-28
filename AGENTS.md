@@ -55,8 +55,10 @@ to raise with the maintainer, not an implementation detail.
 - **Rubric grading safeguards** (see README "The rubric extension"): live-rubric validation,
   0..max points, 50-student cap, refuse already-scored students, manual posting before the
   first grade, re-check before each write, read-back after each write, honest partial reports.
-- **No automatic config edits.** Nothing edits the user's Codex `config.toml`; print what to
-  change instead.
+- **No configuration edits by project code.** Project scripts print commands and configuration;
+  they never edit the user's Codex `config.toml`. A coding agent may run `codex mcp add` only
+  when the person explicitly authorizes registration. Any finer config edit must be narrowly
+  scoped, backed up, TOML-validated and read back; never replace an existing server blindly.
 - **No institution-specific assumptions** beyond examples and the note to follow local policy.
 
 ## How to change code here
@@ -82,7 +84,7 @@ to raise with the maintainer, not an implementation detail.
 - Every change gets a line in `CHANGELOG.md` under the unreleased version. Say explicitly when
   `SKILL.md` or `examples/codex-mcp-config.example.toml` changed, because users copy those by
   hand.
-- Releases are Git tags `vX.Y.Z` on `main`; users update with `git pull --ff-only`. Never
-  rewrite published history. Bump `version` in `pyproject.toml`, `VERSION` in `canvas_mcp.py`
-  and `USER_AGENT` in `canvas_client.py` together.
+- Releases are Git tags `vX.Y.Z` on `main`; user setup and updates target named tags, not the
+  moving `main` branch. Never rewrite published history. Bump `version` in `pyproject.toml`,
+  `VERSION` in `canvas_mcp.py` and `USER_AGENT` in `canvas_client.py` together.
 - Commit or push only when the maintainer asks.

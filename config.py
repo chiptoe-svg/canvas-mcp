@@ -16,7 +16,10 @@ import ipaddress
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
+import tempfile
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,6 +57,18 @@ def config_dir() -> Path:
 
 def config_path() -> Path:
     return config_dir() / "config.json"
+
+
+def shell_command(parts) -> str:
+    """A copyable command for the current platform, with every item treated as data."""
+    values = [str(item) for item in parts]
+    return subprocess.list2cmdline(values) if sys.platform == "win32" else shlex.join(values)
+
+
+def connect_command(action: str = "connect") -> str:
+    """The exact connection command for this checkout and active Python interpreter."""
+    script = Path(__file__).resolve().with_name("connect_canvas.py")
+    return shell_command([Path(sys.executable).absolute(), script, action])
 
 
 def normalize_base_url(raw: str) -> str:
@@ -116,23 +131,46 @@ def load_settings() -> Settings:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        raise ConfigError("Canvas is not connected yet. In a terminal run: "
-                          "python connect_canvas.py connect") from None
+        raise ConfigError("Canvas is not connected yet. In a terminal run: %s"
+                          % connect_command()) from None
     except (OSError, ValueError) as err:
         raise ConfigError("cannot read %s: %s" % (path, err)) from None
     if not isinstance(data, dict) or not isinstance(data.get("base_url"), str):
-        raise ConfigError("%s has no base_url; run: python connect_canvas.py reconnect" % path)
+        raise ConfigError("%s has no base_url; run: %s" % (path, connect_command("reconnect")))
     return Settings(base_url=normalize_base_url(data["base_url"]))
 
 
 def save_settings(settings: Settings) -> Path:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"base_url": settings.base_url}, indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp, path)
-    if sys.platform != "win32":
-        os.chmod(path, 0o600)
+    fd, name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    tmp = Path(name)
+    content = json.dumps({"base_url": settings.base_url}, indent=2) + "\n"
+    try:
+        if sys.platform != "win32":
+            os.chmod(tmp, 0o600)
+        handle = os.fdopen(fd, "w", encoding="utf-8")
+        fd = -1                                      # handle owns it now
+        with handle:
+            handle.write(content)
+        os.replace(tmp, path)
+    except BaseException as err:
+        # If a signal lands immediately after os.replace, the new settings are already live
+        # even though control never returned to the caller. Preserve that fact for the token
+        # transaction in connect_canvas.py. Require the exact destination content too: an
+        # external removal of the temp file must not look like a successful commit.
+        try:
+            err.canvas_settings_committed = (
+                not tmp.exists() and path.read_text(encoding="utf-8") == content)
+        except Exception:
+            pass
+        if fd >= 0:
+            os.close(fd)
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+        raise
     return path
 
 
@@ -170,8 +208,8 @@ def read_token(host: str) -> str:
     check_keyring_backend()
     token = _keyring().get_password(KEYRING_SERVICE, host)
     if not token:
-        raise ConfigError("no Canvas token is stored for %s; in a terminal run: "
-                          "python connect_canvas.py connect" % host)
+        raise ConfigError("no Canvas token is stored for %s; in a terminal run: %s"
+                          % (host, connect_command()))
     return token
 
 

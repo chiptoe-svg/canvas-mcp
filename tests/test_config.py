@@ -39,6 +39,32 @@ def test_settings_file_never_holds_the_token(fake_keyring):
     assert config.read_token("canvas.example.edu") == "secret-token-abc"
 
 
+def test_settings_save_does_not_follow_a_predictable_temp_symlink(fake_keyring):
+    path = config.config_path()
+    path.parent.mkdir(parents=True)
+    victim = path.parent / "victim.txt"
+    victim.write_text("do not change", encoding="utf-8")
+    path.with_suffix(".tmp").symlink_to(victim)
+
+    config.save_settings(config.Settings("https://canvas.example.edu"))
+
+    assert victim.read_text(encoding="utf-8") == "do not change"
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "base_url": "https://canvas.example.edu"}
+
+
+def test_settings_interrupt_removes_its_unique_temp_file(fake_keyring, monkeypatch):
+    path = config.config_path()
+    path.parent.mkdir(parents=True)
+    monkeypatch.setattr(config.os, "fdopen",
+                        lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt()))
+
+    with pytest.raises(KeyboardInterrupt):
+        config.save_settings(config.Settings("https://canvas.example.edu"))
+
+    assert list(path.parent.glob("config.json.*.tmp")) == []
+
+
 def test_refuses_an_unapproved_keyring_backend(monkeypatch):
     class PlaintextKeyring:                 # e.g. keyrings.alt.file.PlaintextKeyring
         pass

@@ -2,6 +2,10 @@
 # %USERPROFILE%\.codex\config.toml). canvas-mcp never edits that file for you.
 # Replace the paths with the absolute paths to your clone, then restart Codex.
 
+# Keep a person answering approvals. "auto_review" lets a model approve in your place.
+# This is a top-level setting: if you use it, uncomment it here, before any [table].
+# approvals_reviewer = "user"
+
 # --- macOS, read-only (the default) -------------------------------------------------------
 [mcp_servers.canvas]
 command = "/Users/you/canvas-mcp/.venv/bin/python"
@@ -13,15 +17,13 @@ args = ["/Users/you/canvas-mcp/canvas_mcp.py"]
 # args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm", "--enable-rubrics"]
 # # A 50-student grading batch makes about 150 Canvas requests after you confirm; allow time.
 # tool_timeout_sec = 600
+# # Keep Codex's own approval prompt for every tool marked as a write.
+# default_tools_approval_mode = "writes"
 
 # --- Windows (single quotes keep the backslashes literal) ----------------------------------
 # [mcp_servers.canvas]
 # command = 'C:\Users\you\canvas-mcp\.venv\Scripts\python.exe'
 # args = ['C:\Users\you\canvas-mcp\canvas_mcp.py']
-
-# Keep a person answering approvals. "auto_review" lets a model approve in your place.
-# This is a top-level setting; put it near the top of config.toml, not under [mcp_servers].
-# approvals_reviewer = "user"
 
 # Do NOT add this: it removes Codex's own prompt for the tool.
 # [mcp_servers.canvas.tools.canvas_apply_write]
