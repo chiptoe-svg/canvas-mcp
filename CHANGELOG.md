@@ -9,6 +9,10 @@ example changed, because those are copied by hand.
 - Added a framework-free GitHub Pages guide covering beginner setup, the read-only-first flow,
   optional writes and rubrics, safety boundaries, and uninstall. `SKILL.md` and
   `examples/codex-mcp-config.example.toml` are unchanged.
+- The README and GitHub Pages guide now label exactly what belongs in Codex versus Terminal,
+  provide a Codex prompt that prepares write settings without editing configuration, and add
+  separate prompts to refresh the matching skill or update the tagged project and skill together.
+  `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
 - `uninstall.py` now checks nested release directories against an explicit file manifest, so an
   unrelated file placed inside `docs/`, `examples/`, `extensions/` or `tests/` keeps the project
   folder from being deleted.

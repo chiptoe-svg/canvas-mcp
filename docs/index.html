@@ -344,6 +344,42 @@
       padding-left: 0.55rem;
     }
     .checklist li::marker { color: var(--ink); font-weight: 850; }
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+    .choice-card {
+      padding: 24px;
+      border: 1px solid rgba(19, 34, 56, 0.14);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .choice-card h3 { margin-bottom: 8px; font-size: 1.12rem; letter-spacing: -0.02em; }
+    .choice-card p { margin-top: 0; color: #45576c; }
+    .location-label {
+      display: inline-block;
+      margin: 0 0 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .location-label.manual { background: #6b7f92; }
+    details.manual-path {
+      margin-top: 24px;
+      padding: 18px 20px;
+      border: 1px solid rgba(19, 34, 56, 0.14);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    details.manual-path summary { cursor: pointer; font-weight: 800; }
+    details.manual-path[open] summary { margin-bottom: 16px; }
     .footer {
       border-top: 1px solid var(--line);
       background: var(--warm);
@@ -374,7 +410,7 @@
       .journey-nav li::after, .nav-number { display: none; }
       .journey-nav a { display: block; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; background: white; }
       main { padding-top: 22px; }
-      .two-column { grid-template-columns: 1fr; }
+      .two-column, .choice-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 680px) {
       body { font-size: 16px; }
@@ -449,7 +485,8 @@
         <li><span class="nav-number">3</span><a href="#connect">Connect</a></li>
         <li><span class="nav-number">4</span><a href="#read">Start read-only</a></li>
         <li><span class="nav-number">5</span><a href="#writes">Add writes</a></li>
-        <li><span class="nav-number">6</span><a href="#remove">Remove</a></li>
+        <li><span class="nav-number">6</span><a href="#update">Update</a></li>
+        <li><span class="nav-number">7</span><a href="#remove">Remove</a></li>
       </ol>
     </nav>
 
@@ -587,29 +624,136 @@ any Canvas write while setting this up.</pre>
           <div class="flow" aria-label="Write safety flow">
             <div>Preview</div><div>You confirm</div><div>Send once</div><div>Read back</div>
           </div>
-          <div class="two-column">
-            <div>
-              <h3>Print the exact settings for your checkout</h3>
-              <div class="code-wrap">
-                <pre id="setup-info-command">cd ~/canvas-mcp
-.venv/bin/python connect_canvas.py setup-info</pre>
-                <button class="copy-button" type="button" data-copy-target="setup-info-command">Copy</button>
-              </div>
-              <p>Back up <span class="inline-code">~/.codex/config.toml</span>, then carefully merge the printed block into the existing <span class="inline-code">[mcp_servers.canvas]</span> entry. Do not append a duplicate server block.</p>
+          <p class="location-label">Paste this into Codex — not Terminal</p>
+          <h3>Ask Codex to prepare your exact write settings</h3>
+          <p>Codex will inspect your existing setup, make one read-only Canvas connection check, and print only the change you need. It will not edit your configuration or change Canvas.</p>
+          <div class="code-wrap">
+            <pre id="writes-prompt">Help me enable canvas-mcp writes safely in my existing installation at ~/canvas-mcp. Read
+AGENTS.md first and follow it. This request authorizes read-only inspection, one read-only Canvas
+connection check, and printed instructions only: do not edit ~/.codex/config.toml, do not
+request or expose my Canvas token, and do not make any Canvas write. Before running project
+Python, verify that origin is exactly https://github.com/chiptoe-svg/canvas-mcp.git, the checkout
+has no tracked or untracked changes, HEAD exactly matches a strict vX.Y.Z release tag, and that
+remote tag resolves to the same commit. Stop if any check fails. Report the exact tag and commit,
+run the test suite, then run .venv/bin/python connect_canvas.py status. If it is not connected,
+stop and tell me what to do. Run .venv/bin/python connect_canvas.py setup-info and inspect only
+my existing Codex canvas MCP entry and the top-level approvals_reviewer. Starting from the
+existing canvas block, preserve every unrelated setting and change only what is required. Print
+the exact replacement [mcp_servers.canvas] block using this checkout's real absolute paths, with
+"--writes", "confirm" and default_tools_approval_mode = "writes". Do not enable rubrics. If the
+existing entry cannot be merged safely, stop. If approvals_reviewer is "auto_review" or missing,
+show the exact top-level approvals_reviewer = "user" line and where it belongs. Tell me how to
+back up and open config.toml, exactly what to replace, and to restart Codex. Do not print
+unrelated configuration or append a duplicate canvas server block.</pre>
+            <button class="copy-button" type="button" data-copy-target="writes-prompt">Copy prompt</button>
+          </div>
+          <p class="copy-status" role="status" aria-live="polite"></p>
+
+          <div class="two-column" style="margin-top: 26px;">
+            <div class="detail-box">
+              <h3>Then make one manual edit</h3>
+              <ol>
+                <li>Back up <span class="inline-code">~/.codex/config.toml</span>.</li>
+                <li>Open Codex Settings → <strong>Open config.toml</strong> (or open that file in a text editor).</li>
+                <li>Replace the existing <span class="inline-code">[mcp_servers.canvas]</span> block with the block Codex printed. Do not add a second block.</li>
+                <li>Save the file and restart Codex.</li>
+              </ol>
             </div>
             <aside class="detail-box">
-              <h3>Required write settings</h3>
-              <ul>
-                <li>Add <span class="inline-code">"--writes", "confirm"</span> to the server arguments.</li>
-                <li>Keep <span class="inline-code">default_tools_approval_mode = "writes"</span>.</li>
-                <li>Keep top-level <span class="inline-code">approvals_reviewer = "user"</span>, before every TOML table.</li>
-                <li>Restart Codex after changing configuration.</li>
-              </ul>
+              <h3>Where future confirmations appear</h3>
+              <p>When you later ask Codex to make a change, the approval and canvas-mcp confirmation appear <strong>inside Codex</strong>. The terminal is used only for the hidden token prompt and optional manual setup commands.</p>
             </aside>
           </div>
+
+          <details class="manual-path">
+            <summary>Advanced: print the settings yourself in Terminal</summary>
+            <p class="location-label manual">Run this in Terminal</p>
+            <div class="code-wrap">
+              <pre id="setup-info-command">cd ~/canvas-mcp
+.venv/bin/python connect_canvas.py setup-info</pre>
+              <button class="copy-button" type="button" data-copy-target="setup-info-command">Copy command</button>
+            </div>
+            <p>This prints an advanced block with writes and the optional rubric extension. Remove <span class="inline-code">"--enable-rubrics"</span> and <span class="inline-code">tool_timeout_sec = 600</span> unless you deliberately want rubric tools.</p>
+          </details>
           <aside class="callout danger"><strong>Never retry an uncertain write.</strong> If a result says <span class="inline-code">WRITE STATUS UNCERTAIN</span>, the request may have reached Canvas even though the response was lost. Inspect the object in Canvas or read it back before doing anything else.</aside>
           <h3 style="margin-top: 34px;">Rubrics are another explicit opt-in</h3>
           <p>Add <span class="inline-code">"--enable-rubrics"</span> only if you need rubric creation or guarded batch grading, and set <span class="inline-code">tool_timeout_sec = 600</span>. Rubric grading limits batches to 50 ungraded students, validates the live rubric, re-checks before each write, and reads each result back. By default it moves automatic posting to manual before the first grade. If you deliberately set <span class="inline-code">keep_post_policy=true</span>, it does not make that change and grades may become visible immediately.</p>
+        </div>
+      </section>
+
+      <section id="update" class="journey-section green" aria-labelledby="update-title">
+        <div class="section-heading">
+          <span class="step-number" aria-hidden="true">6</span>
+          <div>
+            <h2 id="update-title">Update when you choose</h2>
+            <p class="lede">Nothing updates automatically. Use the quick option to repair the installed skill, or update the tagged project and skill together.</p>
+          </div>
+        </div>
+        <div class="section-body">
+          <p class="location-label">Paste either prompt into Codex — not Terminal</p>
+          <div class="choice-grid">
+            <article class="choice-card">
+              <h3>Refresh the skill</h3>
+              <p>Quick repair. Keeps the currently installed server release and refreshes only Codex's matching workflow instructions.</p>
+              <div class="code-wrap">
+                <pre id="refresh-skill-prompt">Refresh the installed canvas-mcp skill from my existing checkout at ~/canvas-mcp. Read
+AGENTS.md first. Do not fetch, switch, or update project code; do not edit Codex configuration;
+do not request a token; and do not call Canvas. Confirm that the checkout is on an exact
+published version tag, verify that origin is exactly
+https://github.com/chiptoe-svg/canvas-mcp.git and that this exact tag name exists in origin's
+refs/tags and resolves, including annotated-tag peeling, to the same commit. Then report the tag
+and commit. Compare ~/canvas-mcp/SKILL.md with ~/.codex/skills/canvas-mcp/SKILL.md. Treat the
+source, destination, and backup paths as untrusted: require the source to be a regular file and
+not a symlink, and stop if any existing destination or backup path component is a symlink. If an
+installed SKILL.md exists but is not a regular file, stop. If it is absent, skip the backup; if
+its directory is absent, create it only after verifying every existing parent is a real directory.
+If the files already match, leave the installed file unchanged. Otherwise, when a regular
+installed file exists, create a new uniquely named backup directory without overwriting any
+existing path, copy it to ~/.codex/backups/canvas-mcp/{UTC-timestamp}/SKILL.md, and verify its
+checksum; if the installed file is absent, skip the backup. Then copy the source through a new
+exclusively created regular temporary file in the active skill directory, atomically install
+SKILL.md, verify source and destination checksums match, and report the change and any backup
+path. Tell me to restart Codex.</pre>
+                <button class="copy-button" type="button" data-copy-target="refresh-skill-prompt">Copy prompt</button>
+              </div>
+            </article>
+            <article class="choice-card">
+              <h3>Update everything <span class="inline-code">recommended</span></h3>
+              <p>Moves to the newest published release you authorize, reinstalls its dependencies, tests it, and refreshes the matching skill.</p>
+              <div class="code-wrap">
+                <pre id="update-all-prompt">Safely update my existing canvas-mcp installation at ~/canvas-mcp to the newest published
+stable release tag, including its Codex skill. Read AGENTS.md first. Do not use the moving main
+branch, do not overwrite local work, do not edit ~/.codex/config.toml, do not request or expose
+my Canvas token, and do not make any Canvas write. First verify that origin is exactly
+https://github.com/chiptoe-svg/canvas-mcp.git and the checkout has no tracked or untracked
+changes. Fetch origin/main and tags, consider only strict stable vX.Y.Z tags, and verify both the
+current and target tag names exist in origin's refs/tags and resolve, including annotated-tag
+peeling, to the reported commits. Verify the target commit is contained in origin/main and
+inspect its CHANGELOG.md with git show without running target code. If any check fails, stop.
+Report the exact current tag/commit → target tag/commit and summarize the target release, then
+stop and wait for my explicit approval of that named target tag. After approval, recheck that the
+working tree is still clean and the approved remote tag still resolves to the exact approved
+commit. Then switch detached to it, reinstall with .venv/bin/python -m pip install -e ".[test]",
+and run .venv/bin/python -m pytest -q. If installation or tests fail, stop before replacing the
+skill. Require the release SKILL.md to be a regular file and not a symlink. Stop if any existing
+destination or backup path component is a symlink, or if an installed SKILL.md exists but is not
+a regular file. If the destination directory is absent, create it only after verifying every
+existing parent is a real directory. If source and installed skill checksums match, leave the
+installed file unchanged. Otherwise, if a regular installed file exists, create a new uniquely
+named backup directory without overwriting any existing path, copy the installed file to
+~/.codex/backups/canvas-mcp/{UTC-timestamp}/SKILL.md, and verify its checksum; if the installed
+file is absent, skip the backup. Then copy through a new exclusively created regular temporary
+file in the active skill directory, atomically install SKILL.md, and verify source and
+destination checksums match. Then run .venv/bin/python connect_canvas.py status; if disconnected,
+show the visible-terminal connect command and stop before the token step. Run connect_canvas.py
+setup-info and report
+whether the changelog or config example requires a manual configuration change, but do not make
+it. Verify the registered server, report every change, and tell me to restart Codex.</pre>
+                <button class="copy-button" type="button" data-copy-target="update-all-prompt">Copy prompt</button>
+              </div>
+            </article>
+          </div>
+          <aside class="callout"><strong>Why not download only the newest skill?</strong> The skill teaches Codex how to use this server's exact tools and safeguards. Keeping the skill and tagged server release together prevents mismatched instructions.</aside>
         </div>
       </section>
 
@@ -631,7 +775,7 @@ any Canvas write while setting this up.</pre>
 
       <section id="remove" class="journey-section blue" aria-labelledby="remove-title">
         <div class="section-heading">
-          <span class="step-number" aria-hidden="true">6</span>
+          <span class="step-number" aria-hidden="true">7</span>
           <div>
             <h2 id="remove-title">Remove it when you're done</h2>
             <p class="lede">The uninstaller previews its plan and asks before removing anything. It refuses to delete a project folder containing files it does not recognize.</p>
@@ -655,7 +799,6 @@ any Canvas write while setting this up.</pre>
             </ol>
           </aside>
         </div>
-        <aside class="callout"><strong>Updating instead?</strong> Nothing auto-updates. Review the changelog, fetch tags, and switch only to the specific immutable release you intend to use.</aside>
       </section>
     </main>
   </div>

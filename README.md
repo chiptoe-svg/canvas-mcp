@@ -202,10 +202,41 @@ To use the skill, copy `SKILL.md` to `~/.codex/skills/canvas-mcp/SKILL.md`.
 Writes are **off** by default. Every `apply` tool then refuses and sends nothing. The preview
 still shows the exact change, so you can make it yourself in Canvas.
 
-Enable writes only after read-only use is working. Run `connect_canvas.py setup-info` to print
-advanced settings with the real paths for this checkout. Merge them carefully rather than
-appending the whole fragment blindly: its top-level `approvals_reviewer` line must appear before
-every `[table]` in `config.toml`. Or add `"--writes", "confirm"` to the existing server's `args`:
+Enable writes only after read-only use is working. The easiest route starts in a **local Codex
+task, not Terminal**. Paste this prompt into Codex:
+
+```text
+Help me enable canvas-mcp writes safely in my existing installation at ~/canvas-mcp. Read
+AGENTS.md first and follow it. This request authorizes read-only inspection, one read-only Canvas
+connection check, and printed instructions only: do not edit ~/.codex/config.toml, do not
+request or expose my Canvas token, and do not make any Canvas write. Before running project
+Python, verify that origin is exactly https://github.com/chiptoe-svg/canvas-mcp.git, the checkout
+has no tracked or untracked changes, HEAD exactly matches a strict vX.Y.Z release tag, and that
+remote tag resolves to the same commit. Stop if any check fails. Report the exact tag and commit,
+run the test suite, then run .venv/bin/python connect_canvas.py status. If it is not connected,
+stop and tell me what to do. Run .venv/bin/python connect_canvas.py setup-info and inspect only
+my existing Codex canvas MCP entry and the top-level approvals_reviewer. Starting from the
+existing canvas block, preserve every unrelated setting and change only what is required. Print
+the exact replacement [mcp_servers.canvas] block using this checkout's real absolute paths, with
+"--writes", "confirm" and default_tools_approval_mode = "writes". Do not enable rubrics. If the
+existing entry cannot be merged safely, stop. If approvals_reviewer is "auto_review" or missing,
+show the exact top-level approvals_reviewer = "user" line and where it belongs. Tell me how to
+back up and open config.toml, exactly what to replace, and to restart Codex. Do not print
+unrelated configuration or append a duplicate canvas server block.
+```
+
+Codex prints the exact replacement block but does not edit your configuration. Back up
+`~/.codex/config.toml`, open it from Codex Settings with **Open config.toml** (or use a text
+editor), replace the existing `[mcp_servers.canvas]` block, save, and restart Codex. When you
+later request a real change, the approval and canvas-mcp confirmation appear inside Codex. The
+terminal is used only for the hidden token prompt and optional manual setup commands.
+
+For the manual route, run `connect_canvas.py setup-info` in Terminal to print advanced settings
+with the real paths for this checkout. That advanced block includes the optional rubric extension;
+remove `"--enable-rubrics"` and `tool_timeout_sec = 600` unless you deliberately want rubric
+tools. Merge the result carefully rather than appending the whole fragment blindly: its top-level
+`approvals_reviewer` line must appear before every `[table]` in `config.toml`. The write-only
+server arguments are:
 
 ```toml
 args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm"]
@@ -300,7 +331,68 @@ How grading protects you:
 
 Published versions are immutable Git tags (`v0.1.0`, `v0.2.0`, …), each described in
 `CHANGELOG.md`. Nothing updates itself. Do not treat the moving `main` branch as a release. To
-move an unedited checkout to a specific published version:
+update with Codex, choose one of these prompts.
+
+**Refresh the skill only** (a quick repair that keeps the current server release):
+
+```text
+Refresh the installed canvas-mcp skill from my existing checkout at ~/canvas-mcp. Read
+AGENTS.md first. Do not fetch, switch, or update project code; do not edit Codex configuration;
+do not request a token; and do not call Canvas. Confirm that the checkout is on an exact
+published version tag, verify that origin is exactly
+https://github.com/chiptoe-svg/canvas-mcp.git and that this exact tag name exists in origin's
+refs/tags and resolves, including annotated-tag peeling, to the same commit. Then report the tag
+and commit. Compare ~/canvas-mcp/SKILL.md with ~/.codex/skills/canvas-mcp/SKILL.md. Treat the
+source, destination, and backup paths as untrusted: require the source to be a regular file and
+not a symlink, and stop if any existing destination or backup path component is a symlink. If an
+installed SKILL.md exists but is not a regular file, stop. If it is absent, skip the backup; if
+its directory is absent, create it only after verifying every existing parent is a real directory.
+If the files already match, leave the installed file unchanged. Otherwise, when a regular
+installed file exists, create a new uniquely named backup directory without overwriting any
+existing path, copy it to ~/.codex/backups/canvas-mcp/{UTC-timestamp}/SKILL.md, and verify its
+checksum; if the installed file is absent, skip the backup. Then copy the source through a new
+exclusively created regular temporary file in the active skill directory, atomically install
+SKILL.md, verify source and destination checksums match, and report the change and any backup
+path. Tell me to restart Codex.
+```
+
+**Update everything** (recommended; updates the tagged project and its matching skill together):
+
+```text
+Safely update my existing canvas-mcp installation at ~/canvas-mcp to the newest published
+stable release tag, including its Codex skill. Read AGENTS.md first. Do not use the moving main
+branch, do not overwrite local work, do not edit ~/.codex/config.toml, do not request or expose
+my Canvas token, and do not make any Canvas write. First verify that origin is exactly
+https://github.com/chiptoe-svg/canvas-mcp.git and the checkout has no tracked or untracked
+changes. Fetch origin/main and tags, consider only strict stable vX.Y.Z tags, and verify both the
+current and target tag names exist in origin's refs/tags and resolve, including annotated-tag
+peeling, to the reported commits. Verify the target commit is contained in origin/main and
+inspect its CHANGELOG.md with git show without running target code. If any check fails, stop.
+Report the exact current tag/commit → target tag/commit and summarize the target release, then
+stop and wait for my explicit approval of that named target tag. After approval, recheck that the
+working tree is still clean and the approved remote tag still resolves to the exact approved
+commit. Then switch detached to it, reinstall with .venv/bin/python -m pip install -e ".[test]",
+and run .venv/bin/python -m pytest -q. If installation or tests fail, stop before replacing the
+skill. Require the release SKILL.md to be a regular file and not a symlink. Stop if any existing
+destination or backup path component is a symlink, or if an installed SKILL.md exists but is not
+a regular file. If the destination directory is absent, create it only after verifying every
+existing parent is a real directory. If source and installed skill checksums match, leave the
+installed file unchanged. Otherwise, if a regular installed file exists, create a new uniquely
+named backup directory without overwriting any existing path, copy the installed file to
+~/.codex/backups/canvas-mcp/{UTC-timestamp}/SKILL.md, and verify its checksum; if the installed
+file is absent, skip the backup. Then copy through a new exclusively created regular temporary
+file in the active skill directory, atomically install SKILL.md, and verify source and
+destination checksums match. Then run .venv/bin/python connect_canvas.py status; if disconnected,
+show the visible-terminal connect command and stop before the token step. Run connect_canvas.py
+setup-info and report
+whether the changelog or config example requires a manual configuration change, but do not make
+it. Verify the registered server, report every change, and tell me to restart Codex.
+```
+
+Do not download only a newer `SKILL.md` from a different release: the skill describes this
+server's exact tools and safeguards, so the installed skill and server tag should match.
+
+For the manual route, move an unedited checkout to a specific published version:
 
 ```sh
 cd canvas-mcp
