@@ -1,0 +1,28 @@
+[project]
+name = "canvas-mcp"
+version = "0.1.0"
+description = "A local stdio MCP server for your own Canvas account, for use with Codex."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Provided as-is; see README" }
+dependencies = [
+    "mcp>=2.2,<3",
+    "keyring>=25",
+    "anyio>=4",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# A flat project: the modules run in place from this folder. Installing in editable mode
+# (pip install -e .) only pulls in the dependencies above; your edits take effect directly.
+[tool.setuptools]
+py-modules = ["canvas_mcp", "canvas_client", "config", "connect_canvas", "uninstall"]
+packages = ["extensions"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
