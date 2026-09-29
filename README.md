@@ -62,6 +62,25 @@ The server refuses absolute URLs, other hosts, `..` and percent-encoded paths, a
 (following one would send your token elsewhere). It also refuses the Canvas endpoints that create
 or list access tokens and developer keys, because they would put a credential in front of the model.
 
+### Why not use direct API commands?
+
+Codex can call Canvas directly when it has a token. canvas-mcp does not add Canvas permissions;
+it makes that access constrained and repeatable:
+
+- The token is entered only at a hidden prompt, stored in the operating-system credential store,
+  and read directly by the server instead of being supplied in a command, environment variable,
+  file, or MCP input.
+- Requests are locked to one configured HTTPS Canvas host and approved API paths. Redirects,
+  other hosts, traversal paths, and credential-management endpoints are refused.
+- Writes are disabled by default. When enabled, every write is an exact, expiring, one-time
+  preview followed by a server-side confirmation; uncertain writes are never automatically retried.
+- Tested code enforces the rules on every request rather than relying on each prompt to remember
+  them. Field projection and response limits help reduce unnecessary student data sent to Codex.
+
+The token still carries whatever permissions Canvas assigned to it, and data returned by a tool
+is visible to Codex. This project is a guardrail around access, not a smaller Canvas permission set
+or a substitute for institutional policy.
+
 ## Set up with Codex
 
 The easiest setup is to let Codex do the mechanical work while you keep control of the one

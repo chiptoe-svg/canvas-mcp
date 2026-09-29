@@ -436,6 +436,7 @@
     <div class="header-inner">
       <a class="brand" href="#top">canvas-mcp <small>Your Canvas. In your Codex. On your machine.</small></a>
       <nav class="header-links" aria-label="Primary navigation">
+        <a href="#why">Why</a>
         <a href="#understand">About</a>
         <a href="#safety">Safety</a>
         <a href="https://github.com/chiptoe-svg/canvas-mcp">GitHub</a>
@@ -473,6 +474,7 @@
   <div class="page-shell">
     <nav class="journey-nav" aria-label="Installation journey">
       <ol>
+        <li><span class="nav-number">?</span><a href="#why">Why</a></li>
         <li><span class="nav-number">1</span><a href="#understand">Understand</a></li>
         <li><span class="nav-number">2</span><a href="#install">Install</a></li>
         <li><span class="nav-number">3</span><a href="#connect">Connect</a></li>
@@ -484,6 +486,25 @@
     </nav>
 
     <main id="main">
+      <section id="why" class="journey-section neutral" aria-labelledby="why-title">
+        <div class="section-heading">
+          <span class="step-number" aria-hidden="true">?</span>
+          <div>
+            <h2 id="why-title">Why use this instead of direct API commands?</h2>
+            <p class="lede">Codex can already call Canvas's API if you give it a token. The question is not whether it <em>can</em> connect—it is what prevents an ordinary request, mistake, or retry from becoming a credential leak or an unintended course change.</p>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="safety-grid">
+            <article class="safety-item"><h3>The token has one guarded home</h3><p>Direct commands often require passing the token through a command, environment variable, file, or model-visible context. canvas-mcp accepts it only at a hidden prompt, stores it in Keychain or Credential Manager, and reads it directly when needed.</p></article>
+            <article class="safety-item"><h3>Requests stay inside one Canvas</h3><p>Every request is locked to the configured HTTPS host and approved Canvas API paths. Redirects, other hosts, traversal paths, and credential-management endpoints are refused before the token is sent.</p></article>
+            <article class="safety-item"><h3>Writes are a deliberate workflow</h3><p>Direct API commands execute immediately. Here, writes start disabled. When enabled, Codex must prepare an exact preview, you approve that one-time preview, the server asks again, sends it once, and reports uncertain results as “do not retry.”</p></article>
+            <article class="safety-item"><h3>The safeguards are repeatable</h3><p>Instead of asking each prompt to remember every rule, the server enforces host locking, response limits, field selection, approval, expiry, and read-back in tested code. The matching Codex skill teaches the same workflow every time.</p></article>
+          </div>
+          <aside class="callout danger"><strong>This does not reduce the token's Canvas permissions.</strong> Canvas still decides what the account may access, and any course or student data returned by a tool becomes visible to Codex. Use the narrowest requests you need and follow your institution's policy.</aside>
+        </div>
+      </section>
+
       <section id="understand" class="journey-section blue" aria-labelledby="understand-title">
         <div class="section-heading">
           <span class="step-number" aria-hidden="true">1</span>

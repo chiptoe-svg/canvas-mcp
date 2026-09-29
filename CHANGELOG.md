@@ -8,6 +8,9 @@ example changed, because those are copied by hand.
 
 - Removed the hero tagline from the GitHub Pages guide and shortened its title to “Safe Codex
   Access into Canvas.” `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
+- Added a “Why” section to the README and GitHub Pages guide explaining what canvas-mcp adds over
+  direct Canvas API commands: token isolation, host/path restrictions, guarded writes, and tested,
+  repeatable enforcement. `SKILL.md` and the config example are unchanged.
 
 ## [0.1.1] - 2026-09-28
 
