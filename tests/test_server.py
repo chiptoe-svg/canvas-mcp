@@ -50,7 +50,7 @@ def call(server, name, args, elicit=None, mode="legacy"):
     return anyio.run(run), seen
 
 
-ACCEPT = lambda p: types.ElicitResult(action="accept", content={"confirm": True})
+ACCEPT = lambda p: types.ElicitResult(action="accept", content={"decision": "apply"})
 
 
 # ------------------------------------------------------------------------------------ reads
@@ -149,29 +149,59 @@ def test_confirm_applies_exactly_the_preview_once_after_explicit_accept():
     out, seen = call(server, "canvas_apply_write", {"preview_id": pid}, elicit=ACCEPT)
     assert out["ok"] and out["outcome"] == "applied" and out["status"] == 200
     assert len(fake.writes()) == 1 and fake.writes()[0]["method"] == "PUT"
-    assert "PUT https://canvas.example.edu/api/v1/courses/1/pages/syllabus" in seen[0].message
+    assert seen[0].message == (
+        "Apply the Canvas change you just reviewed?\n\n"
+        "This will update page syllabus in course 1.\n"
+        "Set wiki page title to “New”.\n\n"
+        "Nothing has been sent yet."
+    )
+    assert "PUT" not in seen[0].message and "{" not in seen[0].message
     again, _ = call(server, "canvas_apply_write", {"preview_id": pid}, elicit=ACCEPT)
     assert again["ok"] is False and "already-used" in again["error"] and len(fake.writes()) == 1
 
 
+def test_approval_message_is_plain_language_and_bound_to_the_actual_request():
+    message = canvas_mcp._approval_text({
+        "method": "PUT",
+        "path": "courses/293855/quizzes/682181/questions/10393750",
+        "body": {"question": {"points_possible": 2}},
+    })
+    assert message == (
+        "Apply the Canvas change you just reviewed?\n\n"
+        "This will update question 10393750 in quiz 682181 in course 293855.\n"
+        "Set question points possible to 2.\n\n"
+        "Nothing has been sent yet."
+    )
+    assert all(mark not in message for mark in ("PUT", "https://", "/api/v1", "{", "}", "[", "]"))
+
+
 def test_elicitation_schema_is_codex_compatible():
-    """Codex cancels a schema with a top-level title; an unrequired schema could be auto-accepted."""
-    assert "title" not in CONFIRM_SCHEMA and CONFIRM_SCHEMA["required"] == ["confirm"]
+    """Codex cancels a schema with a top-level title; the decision must be explicit."""
+    assert "title" not in CONFIRM_SCHEMA and CONFIRM_SCHEMA["required"] == ["decision"]
+    decision = CONFIRM_SCHEMA["properties"]["decision"]
+    assert decision["default"] == "do_not_apply"
+    assert decision["oneOf"] == [
+        {"const": "do_not_apply", "title": "Do not apply"},
+        {"const": "apply", "title": "Apply this exact change"},
+    ]
     fake = course_fake()
     t = tools_for(fake)
     pid = t.prepare_write("POST", "courses/1/discussion_topics", {"title": "Week 3"})["preview_id"]
     _, seen = call(canvas_mcp.build_server(t), "canvas_apply_write", {"preview_id": pid}, elicit=ACCEPT)
     sent = seen[0].requested_schema
     sent = sent.model_dump(by_alias=True, exclude_none=True) if hasattr(sent, "model_dump") else sent
-    assert "title" not in sent and sent["required"] == ["confirm"]
+    assert "title" not in sent and sent["required"] == ["decision"]
+    assert sent["properties"]["decision"]["default"] == "do_not_apply"
+    assert sent["properties"]["decision"]["oneOf"][0]["const"] == "do_not_apply"
 
 
 @pytest.mark.parametrize("answer", [
     types.ElicitResult(action="decline"),
     types.ElicitResult(action="cancel"),
-    types.ElicitResult(action="accept", content={"confirm": False}),
+    types.ElicitResult(action="accept", content={"decision": "do_not_apply"}),
     types.ElicitResult(action="accept", content={}),
-    types.ElicitResult(action="accept", content={"confirm": "true"}),
+    types.ElicitResult(action="accept", content={"decision": True}),
+    types.ElicitResult(action="accept", content={"decision": "APPLY"}),
 ])
 def test_anything_but_explicit_accept_refuses_and_consumes(answer):
     fake = course_fake()

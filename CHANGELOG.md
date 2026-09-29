@@ -1,10 +1,34 @@
 # Changelog
 
 Each release is an immutable Git tag (`vX.Y.Z`). Update by fetching tags and selecting a named
-release; see the README's "Updating" section. Entries say when `SKILL.md` or the Codex config
-example changed, because those are copied by hand.
+release; see the README's "Updating" section. Entries say when the skill package or Codex config
+example changed, because users install or copy those separately.
 
 ## Unreleased
+
+- Replaced the write-confirmation dialog's lone boolean “Confirm” field with explicit
+  **Apply this exact change** and **Do not apply** choices. The server still requires an exact
+  positive value, defaults to Do not apply, and fails closed for Skip, cancel, missing, malformed,
+  or negative responses. Ordinary-write dialogs now turn the stored request into a short,
+  plain-language target and change summary instead of repeating the HTTP method, URL, and JSON;
+  rubric dialogs retain their specific plain-language summaries. The complete prepared preview
+  remains authoritative; the final summary is generated from the actual stored request but is not
+  represented as a second complete rendering of every field.
+  README, the landing page, and `references/writes.md` now explain Codex's generic Continue
+  button. `SKILL.md` and the config example are unchanged.
+- Split the Codex skill into a short write/rubric-only `SKILL.md` and progressive
+  `references/writes.md` and `references/rubrics.md`. Ordinary read-only Canvas questions now route
+  directly to the registered MCP tools without loading the skill. `install-skill` previews,
+  backs up, atomically replaces, and verifies every managed package file, installing references
+  before the entrypoint. The config example is unchanged.
+- Clarified every beginner-facing command as macOS Terminal or native Windows PowerShell,
+  added Windows forms for connection, registration, update, skill refresh, and uninstall, and
+  explicitly excluded WSL because Linux credential backends are not supported. The guide now
+  describes Windows support accurately as automated-test-covered but not yet validated through
+  a real Windows end-to-end run. Removed the obsolete one-time v0.1.0 update disclosure from the
+  landing page. Ordinary reads now use registered Canvas tools without the skill; its write/rubric
+  workflows forbid memory, shell, direct-API, and hand-built MCP-client fallbacks. The config
+  example is unchanged.
 
 ## [0.1.3] - 2026-09-28
 

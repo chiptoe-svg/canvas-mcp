@@ -1,13 +1,17 @@
-"""Connect this computer's canvas-mcp to your Canvas account.
+r"""Connect this computer's canvas-mcp to your Canvas account.
 
     .venv/bin/python connect_canvas.py connect      # ask for URL + token, verify, save
     .venv/bin/python connect_canvas.py status       # show URL and token validity
     .venv/bin/python connect_canvas.py reconnect    # replace token and optionally URL
     .venv/bin/python connect_canvas.py disconnect   # delete stored token and URL
     .venv/bin/python connect_canvas.py setup-info   # print setup commands; change nothing
-    .venv/bin/python connect_canvas.py install-skill  # preview matching skill installation
+    .venv/bin/python connect_canvas.py install-skill  # preview write/rubric skill package
 
-Run it yourself in a terminal. The token is typed at a hidden prompt, checked against
+On Windows PowerShell, replace ``.venv/bin/python`` with
+``.\.venv\Scripts\python.exe``. WSL is not supported because it uses Linux credential storage.
+
+Run it yourself in Terminal on macOS or native PowerShell on Windows (not WSL). The token is
+typed at a hidden prompt, checked against
 Canvas's /api/v1/users/self, and saved only in the macOS Keychain or Windows Credential
 Manager. It is never printed, logged, put in a file, or accepted as an argument.
 """
@@ -31,6 +35,7 @@ from canvas_client import CanvasClient, CanvasError
 TOKEN_HELP = ("Create a token in Canvas: Account > Settings > Approved Integrations > "
               "+ New Access Token. Follow your institution's policy on personal access tokens.")
 SKILL_SOURCE = Path(__file__).resolve().with_name("SKILL.md")
+SKILL_PACKAGE_FILES = ("references/writes.md", "references/rubrics.md", "SKILL.md")
 
 
 def verify(base_url: str, token: str) -> dict:
@@ -245,9 +250,9 @@ def cmd_setup_info(args) -> int:
     python = str(Path(sys.executable).absolute())
     project = Path(__file__).resolve().parent
     server = str(project / "canvas_mcp.py")
-    skill = str(project / "SKILL.md")
+    skill = str(project)
     print("This command only prints instructions; it does not edit your Codex configuration.\n")
-    print("Connect Canvas (run this yourself so the token stays in the hidden terminal prompt):")
+    print("Connect Canvas (run this yourself in Terminal or PowerShell so the token stays hidden):")
     print("  %s\n" % config.connect_command())
     read_only = getattr(args, "read_only", False)
     enable_grading = getattr(args, "enable_rubric_grading", False)
@@ -261,9 +266,9 @@ def cmd_setup_info(args) -> int:
     print("  %s\n" % config.shell_command(["codex", "mcp", "add", "canvas", "--", *server_args]))
     print("Verify after adding it:")
     print("  codex mcp get canvas\n")
-    print("Install this release's matching Codex skill (preview first):")
+    print("Install this release's matching Codex write/rubric skill package (preview first):")
     print("  %s" % config.shell_command([python, Path(__file__).resolve(), "install-skill"]))
-    print("Skill source: %s" % skill)
+    print("Skill package source: %s" % skill)
     return 0
 
 
@@ -350,90 +355,208 @@ def _make_directory(path: Path) -> None:
             raise config.ConfigError("could not create a safe skill directory: %s" % item)
 
 
+def _install_skill_file(item: dict, backup_dir: Path | None) -> None:
+    """Atomically install one preflighted package file, preserving its previous bytes."""
+    source = item["source"]
+    destination = item["destination"]
+    content = item["source_content"]
+    previous = item["destination_content"]
+    backup = backup_dir / item["relative"] if backup_dir and previous is not None else None
+    _check_path_chain(source.parent)
+    _make_directory(destination.parent)
+
+    fd = -1
+    temporary = None
+    replaced = False
+    try:
+        fd, temp_name = tempfile.mkstemp(prefix=".%s." % destination.name, suffix=".tmp",
+                                         dir=destination.parent)
+        temporary = Path(temp_name)
+        with os.fdopen(fd, "wb") as handle:
+            fd = -1
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary_content, _ = _stable_file_bytes(temporary)
+        if temporary_content != content:
+            raise config.ConfigError("temporary skill copy could not be verified")
+        _check_path_chain(destination.parent)
+        if _regular_fingerprint(source, allow_missing=False) != item["source_fingerprint"]:
+            raise config.ConfigError("skill source changed before installation: %s"
+                                     % item["relative"])
+        if _regular_fingerprint(destination, allow_missing=True) != item["destination_fingerprint"]:
+            raise config.ConfigError("installed skill changed after preview: %s"
+                                     % item["relative"])
+        os.replace(temporary, destination)
+        replaced = True
+        try:
+            installed_content, _ = _stable_file_bytes(destination)
+            verified = installed_content == content
+        except config.ConfigError:
+            verified = False
+        if not verified:
+            detail = "previous copy: %s" % backup if backup else "there was no previous copy"
+            raise config.ConfigError("installed skill file was replaced but verification failed: "
+                                     "%s; %s" % (item["relative"], detail))
+    except OSError as err:
+        state = "destination may have changed" if replaced else "destination was not replaced"
+        backup_note = "; verified backup: %s" % backup if backup else ""
+        raise config.ConfigError("skill installation failed for %s (%s); %s%s"
+                                 % (item["relative"], type(err).__name__, state, backup_note)) from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            if temporary is not None:
+                temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _rollback_skill_file(item: dict) -> None:
+    """Restore one completed package file only if it still holds our installed bytes."""
+    destination = item["destination"]
+    previous = item["destination_content"]
+    _check_path_chain(destination.parent)
+    current, current_fingerprint = _stable_file_bytes(destination)
+    if current != item["source_content"]:
+        raise config.ConfigError("rollback refused because %s changed again"
+                                 % item["relative"])
+    if previous is None:
+        if _regular_fingerprint(destination, allow_missing=False) != current_fingerprint:
+            raise config.ConfigError("rollback refused because %s changed again"
+                                     % item["relative"])
+        destination.unlink()
+        if _regular_fingerprint(destination, allow_missing=True) is not None:
+            raise config.ConfigError("rollback could not remove %s" % item["relative"])
+        return
+
+    fd = -1
+    temporary = None
+    try:
+        fd, temp_name = tempfile.mkstemp(prefix=".%s.rollback." % destination.name,
+                                         suffix=".tmp", dir=destination.parent)
+        temporary = Path(temp_name)
+        with os.fdopen(fd, "wb") as handle:
+            fd = -1
+            handle.write(previous)
+            handle.flush()
+            os.fsync(handle.fileno())
+        restored, _ = _stable_file_bytes(temporary)
+        if restored != previous:
+            raise config.ConfigError("rollback temporary copy could not be verified")
+        if _regular_fingerprint(destination, allow_missing=False) != current_fingerprint:
+            raise config.ConfigError("rollback refused because %s changed again"
+                                     % item["relative"])
+        os.replace(temporary, destination)
+        restored, _ = _stable_file_bytes(destination)
+        if restored != previous:
+            raise config.ConfigError("rollback verification failed for %s" % item["relative"])
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            if temporary is not None:
+                temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def install_skill(*, apply: bool = False, source: Path | None = None,
                   codex_home: Path | None = None) -> dict:
-    """Preview or safely install this release's SKILL.md, with a verified backup."""
+    """Preview or safely install this release's progressive skill package."""
     source = Path(source or SKILL_SOURCE)
+    source_root = source.parent
     codex_home = Path(codex_home or _codex_home())
     skill_dir = codex_home / "skills" / "canvas-mcp"
     destination = skill_dir / "SKILL.md"
     backup_root = codex_home / "backups" / "canvas-mcp"
-    source_content, source_fingerprint = _stable_file_bytes(source)
+    _check_path_chain(source_root)
     _check_path_chain(skill_dir)
     _check_path_chain(backup_root)
-    destination_content, destination_fingerprint = _stable_file_bytes(destination, allow_missing=True)
-    source_hash = _bytes_sha256(source_content)
-    if destination_content is not None and _bytes_sha256(destination_content) == source_hash:
-        return {"changed": False, "source": source, "destination": destination, "backup": None}
-    if not apply:
-        return {"changed": True, "source": source, "destination": destination,
-                "backup": "required" if destination_content is not None else None}
 
-    backup = None
-    replaced = False
-    try:
-        _make_directory(skill_dir)
-        if destination_content is not None:
-            _make_directory(backup_root)
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-            backup_dir = backup_root / stamp
-            backup_dir.mkdir()
-            backup = backup_dir / "SKILL.md"
+    package = []
+    for relative in SKILL_PACKAGE_FILES:
+        package_source = source if relative == "SKILL.md" else source_root / relative
+        package_destination = skill_dir / relative
+        _check_path_chain(package_source.parent)
+        _check_path_chain(package_destination.parent)
+        source_content, source_fingerprint = _stable_file_bytes(package_source)
+        destination_content, destination_fingerprint = _stable_file_bytes(
+            package_destination, allow_missing=True)
+        package.append({"relative": Path(relative), "source": package_source,
+                        "destination": package_destination, "source_content": source_content,
+                        "source_fingerprint": source_fingerprint,
+                        "destination_content": destination_content,
+                        "destination_fingerprint": destination_fingerprint})
+
+    changed = [item for item in package
+               if item["destination_content"] is None or
+               _bytes_sha256(item["destination_content"]) != _bytes_sha256(item["source_content"])]
+    if not changed:
+        return {"changed": False, "source": source_root, "destination": skill_dir, "backup": None}
+    needs_backup = any(item["destination_content"] is not None for item in changed)
+    if not apply:
+        return {"changed": True, "source": source_root, "destination": skill_dir,
+                "backup": "required" if needs_backup else None}
+
+    backup_dir = None
+    if needs_backup:
+        _make_directory(backup_root)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        backup_dir = backup_root / stamp
+        backup_dir.mkdir()
+        for item in changed:
+            previous = item["destination_content"]
+            if previous is None:
+                continue
+            backup = backup_dir / item["relative"]
+            _make_directory(backup.parent)
             with backup.open("xb") as handle:
-                handle.write(destination_content)
+                handle.write(previous)
                 handle.flush()
                 os.fsync(handle.fileno())
             backup_content, _ = _stable_file_bytes(backup)
-            if backup_content != destination_content:
-                raise config.ConfigError("skill backup verification failed; installed skill was not changed")
+            if backup_content != previous:
+                raise config.ConfigError("skill backup verification failed; no installed file "
+                                         "was changed")
 
-        fd, temp_name = tempfile.mkstemp(prefix=".SKILL.md.", suffix=".tmp", dir=skill_dir)
-        temporary = Path(temp_name)
-        try:
-            with os.fdopen(fd, "wb") as handle:
-                fd = -1
-                handle.write(source_content)
-                handle.flush()
-                os.fsync(handle.fileno())
-            temporary_content, _ = _stable_file_bytes(temporary)
-            if temporary_content != source_content:
-                raise config.ConfigError("temporary skill copy could not be verified")
-            _check_path_chain(skill_dir)
-            if _regular_fingerprint(source, allow_missing=False) != source_fingerprint:
-                raise config.ConfigError("skill source changed before installation; nothing was replaced")
-            if _regular_fingerprint(destination, allow_missing=True) != destination_fingerprint:
-                raise config.ConfigError("installed skill changed after preview; nothing was replaced")
-            os.replace(temporary, destination)
-            replaced = True
-            try:
-                installed_content, _ = _stable_file_bytes(destination)
-                verified = installed_content == source_content
-            except config.ConfigError:
-                verified = False
-            if not verified:
-                detail = "previous copy: %s" % backup if backup else "there was no previous copy"
-                raise config.ConfigError("installed skill was replaced but verification failed; %s" % detail)
-        finally:
-            if fd >= 0:
-                os.close(fd)
-            try:
-                temporary.unlink()
-            except (FileNotFoundError, UnboundLocalError):
-                pass
-    except config.ConfigError:
-        raise
-    except OSError as err:
-        state = "destination may have changed" if replaced else "destination was not replaced"
-        backup_note = "; verified backup: %s" % backup if backup else ""
-        raise config.ConfigError("skill installation failed (%s); %s%s"
-                                 % (type(err).__name__, state, backup_note)) from None
-    return {"changed": True, "source": source, "destination": destination, "backup": backup}
+    completed = []
+    try:
+        for item in changed:  # references first; SKILL.md becomes active only after they exist
+            if item["relative"] == Path("SKILL.md"):
+                for reference in package[:-1]:
+                    _check_path_chain(reference["source"].parent)
+                    _check_path_chain(reference["destination"].parent)
+                    active_content, _ = _stable_file_bytes(reference["destination"])
+                    if active_content != reference["source_content"]:
+                        raise config.ConfigError("installed reference changed before entrypoint "
+                                                 "activation: %s" % reference["relative"])
+            _install_skill_file(item, backup_dir)
+            completed.append(item)
+    except config.ConfigError as err:
+        backup_note = "; verified backup: %s" % backup_dir if backup_dir else ""
+        if completed:
+            rollback_errors = []
+            for installed in reversed(completed):
+                try:
+                    _rollback_skill_file(installed)
+                except (config.ConfigError, OSError) as rollback_err:
+                    rollback_errors.append("%s: %s" % (installed["relative"], rollback_err))
+            if rollback_errors:
+                raise config.ConfigError("%s%s; ROLLBACK STATUS UNCERTAIN: %s"
+                                         % (err, backup_note, "; ".join(rollback_errors))) from None
+            raise config.ConfigError("%s%s; completed package files were rolled back and verified"
+                                     % (err, backup_note)) from None
+        raise config.ConfigError("%s%s" % (err, backup_note)) from None
+    return {"changed": True, "source": source_root, "destination": skill_dir,
+            "backup": backup_dir}
 
 
 def cmd_install_skill(args) -> int:
     result = install_skill(apply=args.apply)
-    print("Skill source:      %s" % result["source"])
-    print("Skill destination: %s" % result["destination"])
+    print("Skill package source:      %s" % result["source"])
+    print("Skill package destination: %s" % result["destination"])
     if not result["changed"]:
         print("Already current; no files were changed.")
     elif not args.apply:
@@ -445,7 +568,7 @@ def cmd_install_skill(args) -> int:
     else:
         if result["backup"]:
             print("Verified backup:  %s" % result["backup"])
-        print("Installed and checksum-verified. Restart Codex to load the skill.")
+        print("Installed and checksum-verified. Restart Codex to load the skill package.")
     return 0
 
 

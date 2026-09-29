@@ -9,7 +9,8 @@ step-by-step installation, guarded-write, safety, and uninstall walkthrough.
 
 **Install from a computer, not a phone or tablet.** The guide is responsive so it is readable on
 any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python,
-and a terminal are available.
+and a command-line window are available. Use **Terminal** on macOS or **PowerShell** on Windows.
+The Windows instructions mean native Windows PowerShell, not WSL.
 
 - **Local only.** Codex starts it as a child process over stdio. There is no server to host, no
   open port, no tunnel, no background service, and no OAuth app.
@@ -54,8 +55,9 @@ Six tools are always present:
 With `--enable-rubric-grading`, two additional tools support guarded batch grading. See
 [Rubrics](#rubrics).
 
-`SKILL.md` is a short Codex skill describing how to use these tools for everyday instructor
-work: summarising activity, finding late work, drafting feedback and announcements.
+Ordinary read-only questions use the registered MCP tools directly and do not load a skill. The
+installed `canvas-mcp` skill is intentionally short and scoped only to writes and rubrics; it reads
+the matching reference file when one of those advanced workflows is requested.
 
 Every REST request is locked to your configured `https://` Canvas host and `/api/v1`. The only
 path exception is the single fixed GraphQL post-policy mutation used by guarded rubric grading.
@@ -91,31 +93,35 @@ installation. It installs a tagged source checkout, not a global application: th
 open port, telemetry or auto-update.
 
 ```text
-Install canvas-mcp v0.1.3 by running exactly
-`git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git ~/canvas-mcp`.
+Install canvas-mcp v0.1.3 on this local computer. First identify the host environment. Support
+macOS Terminal and native Windows PowerShell; stop if this is Linux or WSL. Clone exactly v0.1.3
+from https://github.com/chiptoe-svg/canvas-mcp.git into `~/canvas-mcp` on macOS or
+`$HOME\canvas-mcp` on Windows.
 Never substitute main, and do not overwrite an existing folder.
-Immediately after cloning, run `python3 update.py verify v0.1.3` (use `py` on Windows) and stop
-unless it prints `Verified exact release`. Then read AGENTS.md, create .venv, install ".[test]",
-and run pytest. Run
-connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
-wait while I enter the token at its hidden prompt. After I say done, verify status, register only
-the `canvas` server with `codex mcp add`, using `--writes confirm`, run
+Immediately after cloning, run `python3 update.py verify v0.1.3` on macOS or
+`py update.py verify v0.1.3` in PowerShell and stop unless it prints `Verified exact release`.
+Then read AGENTS.md, create .venv, install ".[test]", and run pytest. Use `.venv/bin/python` on
+macOS or `.\.venv\Scripts\python.exe` on Windows for every later project command. Run
+`connect_canvas.py status`. If disconnected, give me the connection command for Terminal or
+PowerShell and wait while I enter the token at its hidden prompt. After I say done, verify status,
+register only the `canvas` server with `codex mcp add`, using `--writes confirm`, run
 `connect_canvas.py install-skill --apply`, and verify with `codex mcp get canvas`. Then run
 `canvas_test_confirmation`; it must not contact Canvas. Never request my token or make a real
 Canvas write during setup.
 ```
 
 The only step Codex must not perform for you is entering the Canvas URL and access token. Run the
-command it prints in a terminal you control; the token prompt is hidden. The recommended setup
+command it prints in Terminal (macOS) or PowerShell (Windows); the token prompt is hidden. The
+recommended setup
 includes guarded writes and rubric creation, but no write happens unless you ask for one, approve
 its exact preview, and accept the server's confirmation. Batch rubric grading remains separate.
 
 At any time, this checkout can print its exact connection and guarded-write `codex mcp add`
 commands without changing anything. Add `--read-only` for a strict read-only registration:
 
-```sh
-.venv/bin/python connect_canvas.py setup-info
-```
+macOS Terminal: `.venv/bin/python connect_canvas.py setup-info`
+
+Windows PowerShell: `.\.venv\Scripts\python.exe connect_canvas.py setup-info`
 
 ## Setup on macOS
 
@@ -142,30 +148,39 @@ To run the tests (no Canvas account or token needed):
 
 ## Setup on Windows
 
-The core connection path is designed for Windows, but the full setup and uninstall workflow has
-not yet been tested on a Windows computer. Install Python 3.10+ from python.org and Git for
-Windows. In PowerShell:
+The code includes native Windows paths, Windows Credential Manager selection, junction checks,
+and PowerShell cleanup commands. Automated tests cover those branches with fakes and scratch
+paths, but the real credential store and full setup/uninstall journey have not yet been run
+end-to-end on a Windows computer. Treat Windows support as beta. Install Python 3.10+ from
+python.org and Git for Windows. Use native
+**PowerShell**, not WSL: WSL is Linux, and canvas-mcp intentionally refuses Linux keyring backends.
 
 ```powershell
 git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
 py update.py verify v0.1.3
 py -m venv .venv
-.venv\Scripts\pip install -e .
+.\.venv\Scripts\pip install -e .
 ```
 
-Tests: `.venv\Scripts\pip install -e ".[test]"` then `.venv\Scripts\pytest`.
+Tests: `.\.venv\Scripts\pip install -e ".[test]"` then `.\.venv\Scripts\pytest`.
 
-On Windows, use `.venv\Scripts\python` wherever this README says `.venv/bin/python`.
+On Windows, use `.\.venv\Scripts\python.exe` wherever this README says `.venv/bin/python`.
 
 ## Connect Canvas
 
 1. In Canvas, open **Account > Settings > Approved Integrations > + New Access Token**. Give it a
    purpose and, ideally, an expiry date. Copy the token.
-2. In a terminal, in the project folder:
+2. In Terminal on macOS, in the project folder:
 
    ```sh
    .venv/bin/python connect_canvas.py connect
+   ```
+
+   Or in native Windows PowerShell:
+
+   ```powershell
+   .\.venv\Scripts\python.exe connect_canvas.py connect
    ```
 
    Enter your Canvas URL (e.g. `https://school.instructure.com`), then paste the token at the
@@ -182,9 +197,9 @@ Other commands:
 | `connect_canvas.py setup-info` | Prints exact connection and Codex setup instructions; changes nothing. |
 | `connect_canvas.py setup-info --read-only` | Prints a strict read-only registration command instead. |
 | `connect_canvas.py setup-info --enable-rubric-grading` | Includes the optional batch rubric grading tools. |
-| `connect_canvas.py install-skill` | Previews installation of the matching skill; `--apply` makes a verified backup and installs it. |
+| `connect_canvas.py install-skill` | Previews the matching write/rubric skill package; `--apply` backs up and installs all managed files. |
 | `update.py check` | Checks the latest stable release and prints its tag, commit, and notes without changing project files. |
-| `update.py apply TAG` | Rechecks and installs exactly the approved tag, runs tests, and refreshes the matching skill. |
+| `update.py apply TAG` | Rechecks and installs exactly the approved tag, runs tests, and refreshes the matching skill package. |
 
 Disconnecting does not revoke the token in Canvas. To revoke it, delete it under **Approved
 Integrations**.
@@ -204,8 +219,17 @@ saved and you can run the connection command again.
 This project never edits Codex configuration directly. Use Codex's own registration command with
 the absolute paths to your clone:
 
+macOS Terminal:
+
 ```sh
 codex mcp add canvas -- /Users/you/canvas-mcp/.venv/bin/python /Users/you/canvas-mcp/canvas_mcp.py --writes confirm
+codex mcp get canvas
+```
+
+Windows PowerShell:
+
+```powershell
+codex mcp add canvas -- "$HOME\canvas-mcp\.venv\Scripts\python.exe" "$HOME\canvas-mcp\canvas_mcp.py" --writes confirm
 codex mcp get canvas
 ```
 
@@ -217,13 +241,24 @@ For strict read-only use, omit `--writes confirm`. Batch rubric grading is a sep
 append `--enable-rubric-grading`. Existing v0.1.1 configurations using `--enable-rubrics` remain
 compatible, but the old name is deprecated.
 
-To use the skill, run `.venv/bin/python connect_canvas.py install-skill` to preview the destination,
-then repeat it with `--apply` after review.
+To install the guarded-write skill package, run `connect_canvas.py install-skill` with the
+platform-specific virtual-environment Python shown above to preview the destination, then repeat it
+with `--apply` after review. The package contains a short entrypoint plus separate write and rubric
+references.
+
+For ordinary read-only Canvas work, Codex should call the registered `canvas` MCP tools directly
+without loading the `canvas-mcp` skill. It should
+not search memories for live Canvas facts, run a Python MCP client, use `curl`, or call the Canvas
+API through the shell. If the tools are unavailable, check `/mcp`; do not bypass the server.
 
 ## Write approval
 
 The recommended registration starts the server with `--writes confirm`. That does not allow
 silent changes. A write still requires all of these steps:
+
+For a write or rubric request, explicitly invoke `$canvas-mcp` or tell Codex to use the
+`canvas-mcp` skill. The short entrypoint loads only the write or rubric reference needed for that
+request.
 
 1. Codex prepares an exact request and shows the current target. Nothing changes.
 2. You approve that specific preview.
@@ -235,9 +270,17 @@ gate but cannot contact or change Canvas. If you prefer that every apply tool re
 register the server using `connect_canvas.py setup-info --read-only`.
 
 In `confirm` mode, before any `apply` tool sends anything, **the server itself** asks you through
-an MCP confirmation dialog (an "elicitation") that repeats the exact request. It proceeds only if
-you accept with `confirm` ticked. A decline, a cancel, a closed dialog, an error, or a Codex that
-cannot show the dialog all refuse the write. Each `preview_id` works once and expires after 10
+a plain-language MCP confirmation dialog (an "elicitation") generated from the stored preview. For
+example: **This will update question 10393750 in quiz 682181 in course 293855. Set question points
+possible to 2.** It does not show an HTTP verb, URL, JSON, braces, or brackets. Rubric confirmations
+similarly name the rubric or assignment and affected students in ordinary language. The complete
+prepared preview remains the authoritative place to review every detail, while this short summary
+helps you notice if a different target or visible change was substituted at the final step. It is
+not a second complete rendering of every field. The server proceeds only if you select **Apply this
+exact change** and submit that choice. **Do not apply** is the safe default. Codex currently labels
+the submit button **Continue**; that button is part of Codex, while the two choices are supplied by
+this server. Selecting **Do not apply**, choosing **Skip**, closing the dialog, an error, or a Codex
+that cannot show the dialog all refuse the write. Each `preview_id` works once and expires after 10
 minutes (`--preview-ttl` sets 60 to 3600 seconds).
 
 **Why the server asks you itself.** Codex does mark tools annotated as destructive and, by
@@ -248,9 +291,9 @@ default, asks before running them. That prompt cannot be relied on alone:
 - headless `codex exec` cancels every confirmation. With this server, writes then simply fail,
   which is the safe outcome.
 
-So you may see two prompts for one change: Codex's, then the server's. The server's prompt is
-the one that shows the exact request. Keep `approvals_reviewer = "user"` in your Codex config,
-and never set `approval_mode = "approve"` on this server's `apply_*` tools.
+So you may see two prompts for one change: Codex's, then the server's. The server's prompt is the
+independent final choice tied to the prepared request. Keep `approvals_reviewer = "user"` in your
+Codex config, and never set `approval_mode = "approve"` on this server's `apply_*` tools.
 
 The automated suite tests both supported MCP protocol modes and proves that declining, cancelling,
 missing elicitation support, and malformed answers all send nothing. Client UI presentation is
@@ -312,7 +355,7 @@ How grading protects you:
 - **Linux** is not supported for token storage. The keyring backends there are not on the
   allowed list.
 - **Student data.** Anything a tool returns goes to the AI model Codex is using. Ask for only
-  what the task needs, and use `fields` to trim results. The skill tells Codex to do this. Your
+  what the task needs, and use `fields` to trim results. Your
   institution's rules on student records apply.
 - **Nothing is kept.** Previews live in memory and disappear when Codex stops the server. There
   is no log, database or telemetry.
@@ -325,35 +368,44 @@ Published versions are immutable Git tags (`v0.1.0`, `v0.1.1`, …), each descri
 **Refresh the skill only** (a quick repair that keeps the current server release):
 
 ```text
-In ~/canvas-mcp, run `.venv/bin/python connect_canvas.py install-skill`, show me the preview,
-and wait. After I approve, run it again with `--apply`, report the verified backup and result,
-then tell me to restart Codex. Do not edit Codex configuration or call Canvas.
+Use the canvas-mcp checkout on this local host: `~/canvas-mcp` and `.venv/bin/python` on macOS,
+or `$HOME\canvas-mcp` and `.\.venv\Scripts\python.exe` in native Windows PowerShell. Run
+`connect_canvas.py install-skill`, show me the preview, and wait. After I approve, run it again
+with `--apply`, report the verified backup and result, then tell me to restart Codex. Do not edit
+Codex configuration or call Canvas. Stop if this is Linux or WSL.
 ```
 
-**Update everything** (recommended; updates the tagged project and its matching skill together):
+**Update everything** (recommended; updates the tagged project and its matching skill package together):
 
 ```text
-In ~/canvas-mcp, run `.venv/bin/python update.py check`, show me the exact current and target
-tags, commits, and release notes, then wait. After I approve that named tag, run
-`.venv/bin/python update.py apply TAG` with that exact tag. Report the test and skill-backup
-results and tell me to restart Codex. Do not edit config.toml or call Canvas.
+Use the canvas-mcp checkout on this local host: `~/canvas-mcp` and `.venv/bin/python` on macOS,
+or `$HOME\canvas-mcp` and `.\.venv\Scripts\python.exe` in native Windows PowerShell. Run
+`update.py check`, show me the exact current and target tags, commits, and release notes, then
+wait. After I approve that named tag, run `update.py apply TAG` with that exact tag. Report the
+test and skill-backup results and tell me to restart Codex. Do not edit config.toml or call
+Canvas. Stop if this is Linux or WSL.
 ```
 
 **One-time update from v0.1.0:** that first release predates `update.py`. Use this short Codex
 prompt once; later releases use the command above:
 
 ```text
-Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.3. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is
-contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
-detached to that exact commit, reinstall ".[test]", run pytest, and run
-`connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.
+Upgrade my existing canvas-mcp checkout from v0.1.0 to exactly v0.1.3. It is at
+`~/canvas-mcp` on macOS or `$HOME\canvas-mcp` in native Windows PowerShell. Stop on Linux or WSL.
+Read AGENTS.md. Verify the checkout is clean, origin is
+https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is contained in origin/main.
+Show me its commit and changelog, then wait. After I approve, switch detached to that exact
+commit, reinstall ".[test]", run pytest, and run `connect_canvas.py install-skill --apply` with
+the checkout's virtual-environment Python. Do not edit config.toml, request a token, or call Canvas.
 ```
 
-Do not download only a newer `SKILL.md` from a different release: the skill describes this
-server's exact tools and safeguards, so the installed skill and server tag should match.
+Do not download only a newer `SKILL.md` or reference file from a different release: the skill
+package describes this server's exact tools and safeguards, so the installed package and server
+tag should match.
 
-For the manual route, move an unedited checkout to a specific published version:
+For the manual route, move an unedited checkout to a specific published version. These commands
+are for macOS Terminal; in Windows PowerShell, use `.\.venv\Scripts\pip` and
+`.\.venv\Scripts\pytest` for the last two commands:
 
 ```sh
 cd canvas-mcp
@@ -371,21 +423,23 @@ until you have reviewed and saved them. Common options for an experienced Git us
 - Keep your edits on your own branch (`git switch -c my-changes`, then commit them).
 - Ask Codex to compare your branch with the new tag and help carry the changes forward.
 
-Read `CHANGELOG.md` before updating. The updater refreshes the matching `SKILL.md`; the changelog
-identifies any configuration-example change for you to review manually.
+Read `CHANGELOG.md` before updating. The updater refreshes the matching skill package; the
+changelog identifies any configuration-example change for you to review manually.
 
-The skill installer rejects symlinks, Windows junctions, and installed-file changes it observes.
+The skill installer copies references before activating their short `SKILL.md` entrypoint, backs up
+every managed file it replaces, and rejects symlinks, Windows junctions, and installed-file changes
+it observes.
 It is not a security boundary against another malicious process already running as the same user,
 which can race any user-owned file operation; close editors or sync tools that modify the skill
 during installation and rerun if it reports a change.
 
 ## Uninstalling
 
-From the project folder:
+From the project folder, use the command for your operating system:
 
 ```sh
 .venv/bin/python uninstall.py                 # macOS
-.venv\Scripts\python uninstall.py             # Windows
+.\.venv\Scripts\python.exe uninstall.py       # Windows PowerShell
 ```
 
 It lists what it will remove and asks its questions before removing anything. Pressing Ctrl-C
@@ -411,7 +465,8 @@ Links inside the folder are removed, never the files they point to.
 
 On Windows, a running Python cannot delete its own folder. The script prints a `Remove-Item`
 command for steps 3 and 4. Run it in PowerShell after the script exits, from a folder
-outside the project. This Windows path has not been tested on Windows yet.
+outside the project. This path has automated coverage with scratch directories but has not yet
+been run through the complete uninstall journey on a real Windows computer.
 
 Two things it does not do:
 

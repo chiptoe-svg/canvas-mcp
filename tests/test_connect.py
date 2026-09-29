@@ -323,8 +323,7 @@ def test_install_skill_apply_backs_up_and_atomically_replaces(tmp_path, monkeypa
     installed = codex_home / "skills" / "canvas-mcp" / "SKILL.md"
     installed.parent.mkdir(parents=True)
     installed.write_text("old skill\n")
-    source = tmp_path / "source-SKILL.md"
-    source.write_text("new skill\n")
+    source = make_skill_source(tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
 
@@ -335,6 +334,111 @@ def test_install_skill_apply_backs_up_and_atomically_replaces(tmp_path, monkeypa
     assert len(backups) == 1 and backups[0].read_text() == "old skill\n"
     assert hashlib.sha256(installed.read_bytes()).digest() == hashlib.sha256(source.read_bytes()).digest()
     assert "Restart Codex" in capsys.readouterr().out
+
+
+def test_install_skill_apply_installs_and_backs_up_progressive_references(
+        tmp_path, monkeypatch):
+    codex_home = tmp_path / "codex"
+    installed_root = codex_home / "skills" / "canvas-mcp"
+    (installed_root / "references").mkdir(parents=True)
+    (installed_root / "SKILL.md").write_text("old skill\n")
+    (installed_root / "references" / "writes.md").write_text("old writes\n")
+    source_root = tmp_path / "source"
+    (source_root / "references").mkdir(parents=True)
+    (source_root / "SKILL.md").write_text("new skill\n")
+    (source_root / "references" / "writes.md").write_text("new writes\n")
+    (source_root / "references" / "rubrics.md").write_text("new rubrics\n")
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source_root / "SKILL.md")
+
+    result = connect_canvas.install_skill(apply=True)
+
+    assert (installed_root / "SKILL.md").read_text() == "new skill\n"
+    assert (installed_root / "references" / "writes.md").read_text() == "new writes\n"
+    assert (installed_root / "references" / "rubrics.md").read_text() == "new rubrics\n"
+    backup_root = Path(result["backup"])
+    assert (backup_root / "SKILL.md").read_text() == "old skill\n"
+    assert (backup_root / "references" / "writes.md").read_text() == "old writes\n"
+
+
+def test_canvas_skill_scope_excludes_ordinary_reads_and_routes_advanced_work():
+    root = Path(connect_canvas.__file__).resolve().parent
+    skill = (root / "SKILL.md").read_text()
+
+    description = skill.split("---", 2)[1]
+    assert "write" in description.lower() and "rubric" in description.lower()
+    assert "read-only" in description.lower() and "do not" in description.lower()
+    assert "references/writes.md" in skill
+    assert "references/rubrics.md" in skill
+    assert (root / "references" / "writes.md").is_file()
+    assert (root / "references" / "rubrics.md").is_file()
+
+
+def test_install_skill_refuses_nested_destination_symlink_even_when_references_match(
+        tmp_path, monkeypatch):
+    codex_home = tmp_path / "codex"
+    installed_root = codex_home / "skills" / "canvas-mcp"
+    installed_root.mkdir(parents=True)
+    (installed_root / "SKILL.md").write_text("old skill\n")
+    source = make_skill_source(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "writes.md").write_text("new writes\n")
+    (outside / "rubrics.md").write_text("new rubrics\n")
+    (installed_root / "references").symlink_to(outside, target_is_directory=True)
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
+
+    with pytest.raises(config.ConfigError, match="symbolic link or junction"):
+        connect_canvas.install_skill(apply=True)
+
+    assert (installed_root / "SKILL.md").read_text() == "old skill\n"
+    assert (outside / "writes.md").read_text() == "new writes\n"
+
+
+def test_install_skill_refuses_nested_source_symlink(tmp_path, monkeypatch):
+    source_root = tmp_path / "source-package"
+    source_root.mkdir()
+    (source_root / "SKILL.md").write_text("new skill\n")
+    outside = tmp_path / "outside-source"
+    outside.mkdir()
+    (outside / "writes.md").write_text("new writes\n")
+    (outside / "rubrics.md").write_text("new rubrics\n")
+    (source_root / "references").symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source_root / "SKILL.md")
+
+    with pytest.raises(config.ConfigError, match="symbolic link or junction"):
+        connect_canvas.install_skill(apply=False, codex_home=tmp_path / "codex")
+
+
+def test_install_skill_rolls_back_completed_reference_after_later_failure(
+        tmp_path, monkeypatch):
+    codex_home = tmp_path / "codex"
+    installed_root = codex_home / "skills" / "canvas-mcp"
+    (installed_root / "references").mkdir(parents=True)
+    (installed_root / "SKILL.md").write_text("old skill\n")
+    (installed_root / "references" / "writes.md").write_text("old writes\n")
+    (installed_root / "references" / "rubrics.md").write_text("old rubrics\n")
+    source = make_skill_source(tmp_path)
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
+    real_mkstemp = connect_canvas.tempfile.mkstemp
+    calls = {"count": 0}
+
+    def fail_second_install(**kwargs):
+        calls["count"] += 1
+        if calls["count"] == 2:
+            raise PermissionError("simulated second-file failure")
+        return real_mkstemp(**kwargs)
+
+    monkeypatch.setattr(connect_canvas.tempfile, "mkstemp", fail_second_install)
+
+    with pytest.raises(config.ConfigError, match="rolled back"):
+        connect_canvas.install_skill(apply=True)
+
+    assert (installed_root / "SKILL.md").read_text() == "old skill\n"
+    assert (installed_root / "references" / "writes.md").read_text() == "old writes\n"
+    assert (installed_root / "references" / "rubrics.md").read_text() == "old rubrics\n"
 
 
 def test_install_skill_refuses_symlink_destination(tmp_path, monkeypatch, capsys):
@@ -368,8 +472,7 @@ def test_install_skill_refuses_concurrent_destination_edit_and_preserves_it(
     installed = codex_home / "skills" / "canvas-mcp" / "SKILL.md"
     installed.parent.mkdir(parents=True)
     installed.write_text("old skill\n")
-    source = tmp_path / "source-SKILL.md"
-    source.write_text("new skill\n")
+    source = make_skill_source(tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
     real_fingerprint = connect_canvas._regular_fingerprint
@@ -396,8 +499,7 @@ def test_install_skill_failure_after_backup_reports_backup(tmp_path, monkeypatch
     installed = codex_home / "skills" / "canvas-mcp" / "SKILL.md"
     installed.parent.mkdir(parents=True)
     installed.write_text("old skill\n")
-    source = tmp_path / "source-SKILL.md"
-    source.write_text("new skill\n")
+    source = make_skill_source(tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
     monkeypatch.setattr(connect_canvas.tempfile, "mkstemp",
@@ -415,15 +517,15 @@ def test_install_skill_post_replace_failure_reports_changed_state_and_backup(
     installed = codex_home / "skills" / "canvas-mcp" / "SKILL.md"
     installed.parent.mkdir(parents=True)
     installed.write_text("old skill\n")
-    source = tmp_path / "source-SKILL.md"
-    source.write_text("new skill\n")
+    source = make_skill_source(tmp_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.setattr(connect_canvas, "SKILL_SOURCE", source)
     real_replace = connect_canvas.os.replace
 
     def replace_then_corrupt(source_path, destination_path):
         real_replace(source_path, destination_path)
-        Path(destination_path).write_text("corrupt after replacement\n")
+        if Path(destination_path) == installed:
+            Path(destination_path).write_text("corrupt after replacement\n")
 
     monkeypatch.setattr(connect_canvas.os, "replace", replace_then_corrupt)
 
@@ -434,3 +536,10 @@ def test_install_skill_post_replace_failure_reports_changed_state_and_backup(
     error = capsys.readouterr().err
     assert "was replaced but verification failed" in error
     assert str(backups[0]) in error
+def make_skill_source(tmp_path, content="new skill\n"):
+    source_root = tmp_path / "source-package"
+    (source_root / "references").mkdir(parents=True)
+    (source_root / "SKILL.md").write_text(content)
+    (source_root / "references" / "writes.md").write_text("new writes\n")
+    (source_root / "references" / "rubrics.md").write_text("new rubrics\n")
+    return source_root / "SKILL.md"

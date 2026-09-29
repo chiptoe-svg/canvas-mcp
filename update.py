@@ -4,7 +4,7 @@ This updater never edits Codex configuration, reads a Canvas token, or calls Can
 proves that the checkout exactly matches one named annotated remote tag. ``check`` fetches release
 metadata and prints the newest stable tag. ``apply`` requires that exact tag as an argument,
 rechecks it against the remote, switches to its immutable commit, installs and tests the release,
-then installs the matching Codex skill with a verified backup.
+then installs the matching Codex skill package with verified backups.
 """
 
 from __future__ import annotations
@@ -177,7 +177,7 @@ def install_skill(project_dir: Path) -> None:
                "install-skill", "--apply"]
     result = subprocess.run(command, cwd=project_dir)
     if result.returncode:
-        raise UpdateError("matching skill installation failed in the target release")
+        raise UpdateError("matching skill-package installation failed in the target release")
 
 
 def cmd_check(project_dir: Path, expected_origin: str) -> int:

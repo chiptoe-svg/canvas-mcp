@@ -131,7 +131,7 @@ def load_settings() -> Settings:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        raise ConfigError("Canvas is not connected yet. In a terminal run: %s"
+        raise ConfigError("Canvas is not connected yet. In Terminal or PowerShell run: %s"
                           % connect_command()) from None
     except (OSError, ValueError) as err:
         raise ConfigError("cannot read %s: %s" % (path, err)) from None
@@ -208,7 +208,7 @@ def read_token(host: str) -> str:
     check_keyring_backend()
     token = _keyring().get_password(KEYRING_SERVICE, host)
     if not token:
-        raise ConfigError("no Canvas token is stored for %s; in a terminal run: %s"
+        raise ConfigError("no Canvas token is stored for %s; in Terminal or PowerShell run: %s"
                           % (host, connect_command()))
     return token
 

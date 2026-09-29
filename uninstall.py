@@ -1,7 +1,7 @@
 """Remove canvas-mcp from this computer.
 
     .venv/bin/python uninstall.py                  # macOS
-    .venv\\Scripts\\python uninstall.py              # Windows
+    .\\.venv\\Scripts\\python.exe uninstall.py        # Windows PowerShell
     .venv/bin/python uninstall.py --keep-project   # keep this folder (and your edits)
 
 It shows what it will remove and asks everything up front: one confirmation, then (to delete
@@ -42,12 +42,15 @@ PROJECT_MARKERS = ("canvas_mcp.py", "connect_canvas.py", "canvas_client.py", "co
 # holding anything else is not deleted. tests/test_uninstall.py checks this list is complete.
 RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SECURITY_REVIEW.md", "SKILL.md", "AGENTS.md", "pyproject.toml", ".gitignore",
                    "canvas_mcp.py", "canvas_client.py", "config.py", "connect_canvas.py",
-                   "uninstall.py", "update.py", "extensions", "tests", "examples", "docs"}
+                   "uninstall.py", "update.py", "extensions", "tests", "examples", "docs",
+                   "references"}
 RELEASE_NESTED_FILES = {
     "docs/index.html",
     "examples/codex-mcp-config.example.toml",
     "extensions/__init__.py",
     "extensions/rubrics.py",
+    "references/rubrics.md",
+    "references/writes.md",
     "tests/conftest.py",
     "tests/fake_canvas.py",
     "tests/test_client.py",

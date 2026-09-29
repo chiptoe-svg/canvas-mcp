@@ -451,7 +451,7 @@
       <section aria-labelledby="hero-title">
         <h1 id="hero-title">Safe Codex Access into <span>Canvas.</span></h1>
         <p class="hero-copy"><strong>canvas-mcp</strong> is a small local source project that connects Codex to your own Canvas account. Every change is previewed, personally confirmed, and sent only once.</p>
-        <aside class="callout device-note"><strong>Install from your computer—not a phone or tablet.</strong> You can read this guide on any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python, and Terminal are available.</aside>
+        <aside class="callout device-note"><strong>Install from your computer—not a phone or tablet.</strong> You can read this guide on any device, but setup must happen on the computer where local Codex, Git, and Python are available. Use <strong>Terminal</strong> on macOS or native <strong>PowerShell</strong> on Windows—not WSL.</aside>
         <div class="actions">
           <button class="button primary" type="button" data-copy-target="setup-prompt">Copy the setup prompt</button>
           <a class="button secondary" href="https://github.com/chiptoe-svg/canvas-mcp">View source on GitHub</a>
@@ -499,7 +499,7 @@
             <article class="safety-item"><h3>The token has one guarded home</h3><p>Direct commands often require passing the token through a command, environment variable, file, or model-visible context. canvas-mcp accepts it only at a hidden prompt, stores it in Keychain or Credential Manager, and reads it directly when needed.</p></article>
             <article class="safety-item"><h3>Requests stay inside one Canvas</h3><p>Every request is locked to the configured HTTPS host and approved Canvas API paths. Redirects, other hosts, traversal paths, and credential-management endpoints are refused before the token is sent.</p></article>
             <article class="safety-item"><h3>Writes are a deliberate workflow</h3><p>Direct API commands execute immediately. Here, Codex must prepare an exact preview, you approve that one-time preview, the server asks again, sends it once, and reports uncertain results as “do not retry.”</p></article>
-            <article class="safety-item"><h3>The safeguards are repeatable</h3><p>Instead of asking each prompt to remember every rule, the server enforces host locking, response limits, field selection, approval, expiry, and read-back in tested code. The matching Codex skill teaches the same workflow every time.</p></article>
+            <article class="safety-item"><h3>The safeguards are repeatable</h3><p>Instead of asking each prompt to remember every rule, the server enforces host locking, response limits, field selection, approval, expiry, and read-back in tested code. A short skill adds guidance only when you request a write or rubric operation.</p></article>
           </div>
           <aside class="callout danger"><strong>This does not reduce the token's Canvas permissions.</strong> Canvas still decides what the account may access, and any course or student data returned by a tool becomes visible to Codex. Use the narrowest requests you need and follow your institution's policy.</aside>
         </div>
@@ -547,14 +547,17 @@
         </div>
         <div class="section-body">
           <div class="code-wrap">
-            <pre id="setup-prompt">Install canvas-mcp v0.1.3 by running exactly
-`git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git ~/canvas-mcp`.
+            <pre id="setup-prompt">Install canvas-mcp v0.1.3 on this local computer. First identify the host environment. Support
+macOS Terminal and native Windows PowerShell; stop if this is Linux or WSL. Clone exactly v0.1.3
+from https://github.com/chiptoe-svg/canvas-mcp.git into `~/canvas-mcp` on macOS or
+`$HOME\canvas-mcp` on Windows.
 Never substitute main, and do not overwrite an existing folder.
-Immediately after cloning, run `python3 update.py verify v0.1.3` (use `py` on Windows) and stop
-unless it prints `Verified exact release`. Then read AGENTS.md, create .venv, install ".[test]",
-and run pytest. Run
-connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
-wait while I enter the token at its hidden prompt. After I say done, verify status, register the
+Immediately after cloning, run `python3 update.py verify v0.1.3` on macOS or
+`py update.py verify v0.1.3` in PowerShell and stop unless it prints `Verified exact release`.
+Then read AGENTS.md, create .venv, install ".[test]", and run pytest. Use `.venv/bin/python` on
+macOS or `.\.venv\Scripts\python.exe` on Windows for every later project command. Run
+`connect_canvas.py status`. If disconnected, give me the connection command for Terminal or
+PowerShell and wait while I enter the token at its hidden prompt. After I say done, verify status, register the
 `canvas` server with `codex mcp add` using `--writes confirm`, run
 `connect_canvas.py install-skill --apply`, and verify with `codex mcp get canvas`. Then run
 `canvas_test_confirmation`; it must not contact Canvas. Never request my token or make a real
@@ -570,19 +573,26 @@ Canvas write during setup.</pre>
           <span class="step-number" aria-hidden="true">3</span>
           <div>
             <h2 id="connect-title">Connect your Canvas account</h2>
-            <p class="lede">This is the one step you perform yourself. The token belongs only in the hidden prompt of a terminal you control—never in Codex chat.</p>
+            <p class="lede">This is the one step you perform yourself. The token belongs only in the hidden prompt of Terminal on macOS or PowerShell on Windows—never in Codex chat.</p>
           </div>
         </div>
         <div class="section-body two-column">
           <div>
             <ol class="checklist">
               <li>In Canvas, open <strong>Account → Settings → Approved Integrations → + New Access Token</strong>. Give it a purpose and an expiry date.</li>
-              <li>Run the exact connection command Codex prints. In a standard macOS checkout it is:</li>
+              <li>Run the exact connection command Codex prints for your operating system.</li>
             </ol>
+            <p class="location-label">macOS Terminal</p>
             <div class="code-wrap">
-              <pre id="connect-command">cd ~/canvas-mcp
+              <pre id="connect-command-macos">cd ~/canvas-mcp
 .venv/bin/python connect_canvas.py connect</pre>
-              <button class="copy-button" type="button" data-copy-target="connect-command">Copy</button>
+              <button class="copy-button" type="button" data-copy-target="connect-command-macos">Copy</button>
+            </div>
+            <p class="location-label">Windows PowerShell (not WSL)</p>
+            <div class="code-wrap">
+              <pre id="connect-command-windows">cd "$HOME\canvas-mcp"
+.\.venv\Scripts\python.exe connect_canvas.py connect</pre>
+              <button class="copy-button" type="button" data-copy-target="connect-command-windows">Copy</button>
             </div>
             <ol class="checklist" start="3">
               <li>Check the displayed <strong>Token destination</strong> hostname, then paste the token at the hidden prompt.</li>
@@ -593,6 +603,7 @@ Canvas write during setup.</pre>
             <h3>Where the secret goes</h3>
             <p>The token is saved only in macOS Keychain or Windows Credential Manager. It is not stored in this project, a config file, an environment variable, shell history, or Codex configuration.</p>
             <p><strong>Bad URL?</strong> Unsafe forms are rejected and re-prompted before the token. A valid-looking typo cannot be recognized by spelling alone, so check the printed hostname.</p>
+            <p><strong>Windows status:</strong> Windows-specific branches have automated coverage with fakes and scratch paths, but the real credential store and complete setup/uninstall journey have not yet been run on a Windows PC. Treat it as beta.</p>
           </aside>
         </div>
       </section>
@@ -612,6 +623,7 @@ Canvas write during setup.</pre>
               <pre id="first-prompt">Using canvas-mcp, list my active Canvas courses. Return only each course name and course ID.</pre>
               <button class="copy-button" type="button" data-copy-target="first-prompt">Copy</button>
             </div>
+            <p><strong>What you should see:</strong> Codex calls the registered <span class="inline-code">canvas_read</span> tool directly, without loading the <span class="inline-code">canvas-mcp</span> skill. It should not search memory for current Canvas facts or launch a Python, shell, <span class="inline-code">curl</span>, or direct-API workaround. If the tool is unavailable, stop and check <span class="inline-code">/mcp</span>.</p>
             <p>Ask for only the fields the task needs. Smaller responses reduce the amount of student information sent to the model.</p>
           </div>
           <aside class="detail-box">
@@ -630,6 +642,7 @@ Canvas write during setup.</pre>
           </div>
         </div>
         <div class="section-body">
+          <aside class="callout"><strong>Load the skill only for a change.</strong> For writes or rubrics, explicitly invoke <span class="inline-code">$canvas-mcp</span> or tell Codex to use that skill. Its short entrypoint then reads only the write or rubric reference needed for the request.</aside>
           <div class="flow" aria-label="Write safety flow">
             <div>Preview</div><div>You confirm</div><div>Send once</div><div>Read back</div>
           </div>
@@ -639,13 +652,14 @@ Canvas write during setup.</pre>
               <ol>
                 <li>Codex prepares the exact request. Nothing changes.</li>
                 <li>You review and approve that specific preview.</li>
-                <li>The server opens its own confirmation inside Codex.</li>
-                <li>Only an explicit acceptance sends the one-time request.</li>
+                <li>The server asks one plain-language final question with a short summary of the stored target and visible change—no URL, JSON, braces, or brackets. The full prepared preview remains the complete review copy.</li>
+                <li>Select <strong>Apply this exact change</strong>, then <strong>Continue</strong>. Choosing <strong>Do not apply</strong>, Skip, or closing the dialog sends nothing.</li>
               </ol>
             </div>
             <aside class="detail-box">
               <h3>Test the confirmation safely</h3>
               <p>The setup prompt asks Codex to call <span class="inline-code">canvas_test_confirmation</span>. It exercises the real gate but cannot contact or change Canvas.</p>
+              <p><strong>Why “Continue”?</strong> Codex supplies that generic button. canvas-mcp supplies the clear Apply and Do not apply choices, defaults to Do not apply, and accepts only Apply.</p>
               <p>If you want every apply tool to refuse outright, ask Codex to re-register the server using <span class="inline-code">connect_canvas.py setup-info --read-only</span>.</p>
             </aside>
           </div>
@@ -656,8 +670,10 @@ Canvas write during setup.</pre>
             <summary>Enable optional batch rubric grading</summary>
             <p class="location-label">Paste this short prompt into Codex</p>
             <div class="code-wrap">
-              <pre id="enable-grading-prompt">In ~/canvas-mcp, read AGENTS.md, run the tests and `connect_canvas.py status`, inspect the
-existing entry with `codex mcp get canvas`, then run
+              <pre id="enable-grading-prompt">Use `~/canvas-mcp` and `.venv/bin/python` on macOS, or `$HOME\canvas-mcp` and
+`.\.venv\Scripts\python.exe` in native Windows PowerShell. Stop on Linux or WSL. Read AGENTS.md,
+run the tests and `connect_canvas.py status`, inspect the existing entry with
+`codex mcp get canvas`, then run
 `connect_canvas.py setup-info --enable-rubric-grading`. Show me the exact replacement command
 and wait. After I approve, re-register that entry and verify it with `codex mcp get canvas`.
 Do not edit config.toml or call Canvas.</pre>
@@ -682,9 +698,11 @@ Do not edit config.toml or call Canvas.</pre>
               <h3>Refresh the skill</h3>
               <p>Quick repair. Keeps the currently installed server release and refreshes only Codex's matching workflow instructions.</p>
               <div class="code-wrap">
-                <pre id="refresh-skill-prompt">In ~/canvas-mcp, run `.venv/bin/python connect_canvas.py install-skill`, show me the preview,
-and wait. After I approve, run it again with `--apply`, report the verified backup and result,
-then tell me to restart Codex. Do not edit Codex configuration or call Canvas.</pre>
+                <pre id="refresh-skill-prompt">Use the canvas-mcp checkout and its virtual-environment Python: `~/canvas-mcp` and
+`.venv/bin/python` on macOS, or `$HOME\canvas-mcp` and `.\.venv\Scripts\python.exe` in native
+Windows PowerShell. Stop on Linux or WSL. Run `connect_canvas.py install-skill`, show me the
+preview, and wait. After I approve, run it again with `--apply`, report the verified backup and
+result, then tell me to restart Codex. Do not edit Codex configuration or call Canvas.</pre>
                 <button class="copy-button" type="button" data-copy-target="refresh-skill-prompt">Copy prompt</button>
               </div>
             </article>
@@ -692,28 +710,18 @@ then tell me to restart Codex. Do not edit Codex configuration or call Canvas.</
               <h3>Update everything <span class="inline-code">recommended</span></h3>
               <p>Moves to the newest published release you authorize, reinstalls its dependencies, tests it, and refreshes the matching skill.</p>
               <div class="code-wrap">
-                <pre id="update-all-prompt">In ~/canvas-mcp, run `.venv/bin/python update.py check`, show me the exact current and target
-tags, commits, and release notes, then wait. After I approve that named tag, run
-`.venv/bin/python update.py apply TAG` with that exact tag. Report the test and skill-backup
-results and tell me to restart Codex. Do not edit config.toml or call Canvas.</pre>
+                <pre id="update-all-prompt">Use the canvas-mcp checkout and its virtual-environment Python: `~/canvas-mcp` and
+`.venv/bin/python` on macOS, or `$HOME\canvas-mcp` and `.\.venv\Scripts\python.exe` in native
+Windows PowerShell. Stop on Linux or WSL. Run `update.py check`, show me the exact current and
+target tags, commits, and release notes, then wait. After I approve that named tag, run
+`update.py apply TAG` with that exact tag. Report the test and skill-backup results and tell me
+to restart Codex. Do not edit config.toml or call Canvas.</pre>
                 <button class="copy-button" type="button" data-copy-target="update-all-prompt">Copy prompt</button>
               </div>
             </article>
           </div>
-          <details class="manual-path">
-            <summary>One-time update from v0.1.0</summary>
-            <p>Version 0.1.0 predates <span class="inline-code">update.py</span>. Paste this into Codex once; later releases use Update everything above.</p>
-            <div class="code-wrap">
-              <pre id="update-bootstrap-prompt">Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.3. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is
-contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
-detached to that exact commit, reinstall ".[test]", run pytest, and run
-`connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.</pre>
-              <button class="copy-button" type="button" data-copy-target="update-bootstrap-prompt">Copy prompt</button>
-            </div>
-          </details>
-          <aside class="callout"><strong>Why not download only the newest skill?</strong> The skill teaches Codex how to use this server's exact tools and safeguards. Keeping the skill and tagged server release together prevents mismatched instructions.</aside>
-          <p class="microcopy">The installer refuses symlinks, Windows junctions, and installed-file changes it observes. Like any user-owned file operation, it cannot defend against a malicious process already running as you and racing directory changes; close editors or sync tools that modify the skill while installing.</p>
+          <aside class="callout"><strong>Why not download only one skill file?</strong> The short entrypoint and its write and rubric references describe this server's exact tools. Keeping the complete skill package and tagged server release together prevents mismatched instructions.</aside>
+          <p class="microcopy">The installer copies references before activating the entrypoint, backs up every managed file it replaces, and refuses symlinks, Windows junctions, and installed-file changes it observes. Like any user-owned file operation, it cannot defend against a malicious process already running as you and racing directory changes; close editors or sync tools that modify the skill while installing.</p>
         </div>
       </section>
 
@@ -743,10 +751,17 @@ detached to that exact commit, reinstall ".[test]", run pytest, and run
         <div class="section-body two-column">
           <div>
             <h3>Run from the project folder</h3>
+            <p class="location-label">macOS Terminal</p>
             <div class="code-wrap">
-              <pre id="uninstall-command">cd ~/canvas-mcp
+              <pre id="uninstall-command-macos">cd ~/canvas-mcp
 .venv/bin/python uninstall.py</pre>
-              <button class="copy-button" type="button" data-copy-target="uninstall-command">Copy</button>
+              <button class="copy-button" type="button" data-copy-target="uninstall-command-macos">Copy</button>
+            </div>
+            <p class="location-label">Windows PowerShell (not WSL)</p>
+            <div class="code-wrap">
+              <pre id="uninstall-command-windows">cd "$HOME\canvas-mcp"
+.\.venv\Scripts\python.exe uninstall.py</pre>
+              <button class="copy-button" type="button" data-copy-target="uninstall-command-windows">Copy</button>
             </div>
             <p>Use <span class="inline-code">--keep-project</span> if you want to remove the stored connection and skill but preserve the source checkout.</p>
           </div>
