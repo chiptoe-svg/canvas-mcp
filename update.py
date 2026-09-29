@@ -1,9 +1,10 @@
 """Safely move an unedited canvas-mcp checkout to a named published release.
 
-This updater never edits Codex configuration, reads a Canvas token, or calls Canvas. ``check``
-fetches release metadata and prints the newest stable tag. ``apply`` requires that exact tag as
-an argument, rechecks it against the remote, switches to its immutable commit, installs and tests
-the release, then installs the matching Codex skill with a verified backup.
+This updater never edits Codex configuration, reads a Canvas token, or calls Canvas. ``verify``
+proves that the checkout exactly matches one named annotated remote tag. ``check`` fetches release
+metadata and prints the newest stable tag. ``apply`` requires that exact tag as an argument,
+rechecks it against the remote, switches to its immutable commit, installs and tests the release,
+then installs the matching Codex skill with a verified backup.
 """
 
 from __future__ import annotations
@@ -14,8 +15,6 @@ import subprocess
 import sys
 from collections import namedtuple
 from pathlib import Path
-
-import config
 
 OFFICIAL_ORIGIN = "https://github.com/chiptoe-svg/canvas-mcp.git"
 RELEASE_TAG = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
@@ -42,6 +41,12 @@ def _version(tag: str) -> tuple[int, int, int]:
 
 
 def _remote_tags(project_dir: Path) -> dict[str, str]:
+    refs = _remote_tag_refs(project_dir)
+    return {tag: peeled or direct for tag, (direct, peeled) in refs.items()}
+
+
+def _remote_tag_refs(project_dir: Path) -> dict[str, tuple[str, str | None]]:
+    """Return stable tag -> (tag object or commit, peeled commit when annotated)."""
     output = _git(project_dir, "ls-remote", "--tags", "origin", "refs/tags/v*")
     direct, peeled = {}, {}
     for line in output.splitlines():
@@ -54,7 +59,7 @@ def _remote_tags(project_dir: Path) -> dict[str, str]:
             peeled[suffix[:-3]] = commit
         else:
             direct[suffix] = commit
-    return {tag: peeled.get(tag, commit) for tag, commit in direct.items()
+    return {tag: (commit, peeled.get(tag)) for tag, commit in direct.items()
             if RELEASE_TAG.fullmatch(tag)}
 
 
@@ -70,6 +75,50 @@ def _release_notes(changelog: str, tag: str) -> str:
 def _require_clean(project_dir: Path) -> None:
     if _git(project_dir, "status", "--porcelain", "--untracked-files=all"):
         raise UpdateError("checkout has local changes; save or remove them before updating")
+
+
+def _require_plain_index(project_dir: Path) -> None:
+    assumed = [line[2:] for line in _git(project_dir, "ls-files", "-v").splitlines()
+               if line and line[0].islower()]
+    skipped = [line[2:] for line in _git(project_dir, "ls-files", "-t").splitlines()
+               if line.startswith("S ")]
+    hidden = sorted(set(assumed + skipped))
+    if hidden:
+        shown = ", ".join(hidden[:5]) + (" …" if len(hidden) > 5 else "")
+        raise UpdateError("checkout uses hidden index flags (assume-unchanged or skip-worktree): %s"
+                          % shown)
+
+
+def verify_exact_release(project_dir: Path, tag: str, *,
+                         expected_origin: str = OFFICIAL_ORIGIN) -> str:
+    """Prove HEAD is the clean commit named by one annotated tag on the expected remote."""
+    project_dir = Path(project_dir).resolve()
+    _version(tag)
+    if not (project_dir / ".git").exists():
+        raise UpdateError("not a Git checkout: %s" % project_dir)
+    _require_plain_index(project_dir)
+    _require_clean(project_dir)
+    origin = _git(project_dir, "remote", "get-url", "origin")
+    if origin != expected_origin:
+        raise UpdateError("refusing unexpected origin %r; expected %r" % (origin, expected_origin))
+    refs = _remote_tag_refs(project_dir)
+    if tag not in refs:
+        raise UpdateError("release %s does not exist in origin" % tag)
+    remote_object, remote_commit = refs[tag]
+    if remote_commit is None:
+        raise UpdateError("remote release %s is not an annotated tag" % tag)
+    head = _git(project_dir, "rev-parse", "HEAD")
+    if head != remote_commit:
+        raise UpdateError("HEAD %s does not exactly match remote release %s (%s)"
+                          % (head, tag, remote_commit))
+    if _git(project_dir, "cat-file", "-t", "refs/tags/%s" % tag) != "tag":
+        raise UpdateError("local %s is not an annotated release tag" % tag)
+    local_object = _git(project_dir, "rev-parse", "refs/tags/%s" % tag)
+    if local_object != remote_object:
+        raise UpdateError("local %s tag object does not match origin" % tag)
+    if _git(project_dir, "rev-parse", "refs/tags/%s^{}" % tag) != remote_commit:
+        raise UpdateError("local %s does not peel to HEAD" % tag)
+    return head
 
 
 def build_plan(project_dir: Path, target_tag: str | None = None, *, fetch: bool = True,
@@ -132,6 +181,8 @@ def install_skill(project_dir: Path) -> None:
 
 
 def cmd_check(project_dir: Path, expected_origin: str) -> int:
+    import config
+
     plan = build_plan(project_dir, expected_origin=expected_origin)
     _print_plan(plan)
     if plan.current_tag == plan.target_tag:
@@ -140,6 +191,12 @@ def cmd_check(project_dir: Path, expected_origin: str) -> int:
         command = [Path(sys.executable).absolute(), Path(__file__).resolve(), "apply", plan.target_tag]
         print("\nNo files were changed. After reviewing that exact release, run:")
         print("  %s" % config.shell_command(command))
+    return 0
+
+
+def cmd_verify(project_dir: Path, tag: str, expected_origin: str) -> int:
+    commit = verify_exact_release(project_dir, tag, expected_origin=expected_origin)
+    print("Verified exact release: %s (%s). Checkout is clean." % (tag, commit))
     return 0
 
 
@@ -171,12 +228,16 @@ def main(argv=None, *, project_dir: Path | None = None,
          expected_origin: str = OFFICIAL_ORIGIN) -> int:
     parser = argparse.ArgumentParser(description="Update canvas-mcp to a reviewed release tag.")
     sub = parser.add_subparsers(dest="command", required=True)
+    verify_parser = sub.add_parser("verify", help="prove HEAD exactly matches one named remote release")
+    verify_parser.add_argument("tag")
     sub.add_parser("check", help="show the newest published stable release; change no project files")
     apply_parser = sub.add_parser("apply", help="install one exact release shown by check")
     apply_parser.add_argument("tag")
     args = parser.parse_args(argv)
     project_dir = Path(project_dir or Path(__file__).resolve().parent)
     try:
+        if args.command == "verify":
+            return cmd_verify(project_dir, args.tag, expected_origin)
         if args.command == "check":
             return cmd_check(project_dir, expected_origin)
         return cmd_apply(project_dir, args.tag, expected_origin)

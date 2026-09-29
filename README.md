@@ -91,9 +91,12 @@ installation. It installs a tagged source checkout, not a global application: th
 open port, telemetry or auto-update.
 
 ```text
-Install canvas-mcp v0.1.2 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
-Use only the exact published tag; never substitute main, and do not overwrite an existing folder.
-After cloning, read AGENTS.md, create .venv, install ".[test]", and run pytest. Run
+Install canvas-mcp v0.1.3 by running exactly
+`git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git ~/canvas-mcp`.
+Never substitute main, and do not overwrite an existing folder.
+Immediately after cloning, run `python3 update.py verify v0.1.3` (use `py` on Windows) and stop
+unless it prints `Verified exact release`. Then read AGENTS.md, create .venv, install ".[test]",
+and run pytest. Run
 connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
 wait while I enter the token at its hidden prompt. After I say done, verify status, register only
 the `canvas` server with `codex mcp add`, using `--writes confirm`, run
@@ -119,8 +122,9 @@ commands without changing anything. Add `--read-only` for a strict read-only reg
 You need Python 3.10 or newer (`python3 --version`) and Git.
 
 ```sh
-git clone --branch v0.1.2 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
+python3 update.py verify v0.1.3
 python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
@@ -143,8 +147,9 @@ not yet been tested on a Windows computer. Install Python 3.10+ from python.org 
 Windows. In PowerShell:
 
 ```powershell
-git clone --branch v0.1.2 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
+py update.py verify v0.1.3
 py -m venv .venv
 .venv\Scripts\pip install -e .
 ```
@@ -338,8 +343,8 @@ results and tell me to restart Codex. Do not edit config.toml or call Canvas.
 prompt once; later releases use the command above:
 
 ```text
-Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.2. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.2 is
+Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.3. Read AGENTS.md. Verify the
+checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is
 contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
 detached to that exact commit, reinstall ".[test]", run pytest, and run
 `connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.
@@ -354,7 +359,7 @@ For the manual route, move an unedited checkout to a specific published version:
 cd canvas-mcp
 git status                  # stop and ask Codex for help if this shows local edits
 git fetch --tags
-git switch --detach v0.1.2  # replace with the release you reviewed
+git switch --detach v0.1.3  # replace with the release you reviewed
 .venv/bin/pip install -e .  # picks up any new dependency
 .venv/bin/pytest            # optional: confirm it still passes
 ```

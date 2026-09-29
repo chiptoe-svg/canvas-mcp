@@ -6,8 +6,15 @@ example changed, because those are copied by hand.
 
 ## Unreleased
 
+## [0.1.3] - 2026-09-28
+
+- Added `update.py verify TAG`, a machine-enforced installation gate that refuses dirty,
+  untagged, lightweight-tagged, wrong-origin, wrong-commit, or nonexistent-release checkouts.
+  New setup instructions require this proof immediately after cloning and stop on failure.
+  `SKILL.md` and the config example are unchanged.
 - Removed the “Community project, early release” card from the landing page; this is currently a
   single-maintainer project. `SKILL.md` and the config example are unchanged.
+- Bumped the package, MCP server, and HTTP user-agent versions together to 0.1.3.
 
 ## [0.1.2] - 2026-09-28
 

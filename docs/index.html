@@ -440,7 +440,7 @@
         <a href="#understand">About</a>
         <a href="#safety">Safety</a>
         <a href="https://github.com/chiptoe-svg/canvas-mcp">GitHub</a>
-        <span class="version">v0.1.2</span>
+        <span class="version">v0.1.3</span>
         <a class="button primary" href="#install">Get started</a>
       </nav>
     </div>
@@ -456,7 +456,7 @@
           <button class="button primary" type="button" data-copy-target="setup-prompt">Copy the setup prompt</button>
           <a class="button secondary" href="https://github.com/chiptoe-svg/canvas-mcp">View source on GitHub</a>
         </div>
-        <p class="microcopy">Release v0.1.2 · Open source · No hosted middleman · No automatic updates</p>
+        <p class="microcopy">Release v0.1.3 · Open source · No hosted middleman · No automatic updates</p>
       </section>
       <aside class="promise" aria-labelledby="promise-title">
         <h2 id="promise-title">A simpler way to work with your courses</h2>
@@ -547,9 +547,12 @@
         </div>
         <div class="section-body">
           <div class="code-wrap">
-            <pre id="setup-prompt">Install canvas-mcp v0.1.2 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
-Use only the exact published tag; never substitute main, and do not overwrite an existing folder.
-After cloning, read AGENTS.md, create .venv, install ".[test]", and run pytest. Run
+            <pre id="setup-prompt">Install canvas-mcp v0.1.3 by running exactly
+`git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git ~/canvas-mcp`.
+Never substitute main, and do not overwrite an existing folder.
+Immediately after cloning, run `python3 update.py verify v0.1.3` (use `py` on Windows) and stop
+unless it prints `Verified exact release`. Then read AGENTS.md, create .venv, install ".[test]",
+and run pytest. Run
 connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
 wait while I enter the token at its hidden prompt. After I say done, verify status, register the
 `canvas` server with `codex mcp add` using `--writes confirm`, run
@@ -701,8 +704,8 @@ results and tell me to restart Codex. Do not edit config.toml or call Canvas.</p
             <summary>One-time update from v0.1.0</summary>
             <p>Version 0.1.0 predates <span class="inline-code">update.py</span>. Paste this into Codex once; later releases use Update everything above.</p>
             <div class="code-wrap">
-              <pre id="update-bootstrap-prompt">Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.2. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.2 is
+              <pre id="update-bootstrap-prompt">Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.3. Read AGENTS.md. Verify the
+checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is
 contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
 detached to that exact commit, reinstall ".[test]", run pytest, and run
 `connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.</pre>

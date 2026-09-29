@@ -46,6 +46,98 @@ def test_check_reports_exact_current_and_latest_remote_tags(tmp_path, capsys):
     assert "No files were changed" in output
 
 
+def test_verify_accepts_only_the_exact_annotated_remote_tag(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 0
+
+    output = capsys.readouterr().out
+    assert "Verified exact release: v0.1.0" in output
+    assert git(project, "rev-parse", "HEAD") in output
+
+
+def test_verify_refuses_untagged_head_even_when_main_contains_it(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    git(project, "config", "user.name", "Test")
+    git(project, "config", "user.email", "test@example.invalid")
+    (project / "local.txt").write_text("untagged\n")
+    git(project, "add", "local.txt")
+    git(project, "commit", "-q", "-m", "untagged")
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 2
+
+    assert "does not exactly match" in capsys.readouterr().err
+
+
+def test_verify_refuses_dirty_exact_tag(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    (project / "SKILL.md").write_text("locally changed\n")
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 2
+
+    assert "local changes" in capsys.readouterr().err
+
+
+def test_verify_refuses_untracked_file(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    (project / "private.txt").write_text("untracked\n")
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 2
+    assert "local changes" in capsys.readouterr().err
+
+
+def test_verify_refuses_lightweight_remote_tag_even_if_local_tag_is_annotated(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    head = git(project, "rev-parse", "HEAD")
+    git(project, "tag", "v0.1.2", head)
+    git(project, "push", "-q", "origin", "v0.1.2")
+    git(project, "tag", "-d", "v0.1.2")
+    git(project, "config", "user.name", "Test")
+    git(project, "config", "user.email", "test@example.invalid")
+    git(project, "tag", "-a", "v0.1.2", "-m", "fabricated", head)
+
+    assert update.main(["verify", "v0.1.2"], project_dir=project, expected_origin=origin) == 2
+    assert "not an annotated" in capsys.readouterr().err
+
+
+def test_verify_refuses_locally_recreated_tag_object(tmp_path, capsys):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    head = git(project, "rev-parse", "HEAD")
+    git(project, "config", "user.name", "Test")
+    git(project, "config", "user.email", "test@example.invalid")
+    git(project, "tag", "-d", "v0.1.0")
+    git(project, "tag", "-a", "v0.1.0", "-m", "different annotation", head)
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 2
+    assert "tag object does not match" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("flag", ["--assume-unchanged", "--skip-worktree"])
+def test_verify_refuses_hidden_index_flags(tmp_path, capsys, flag):
+    project = make_remote(tmp_path)
+    origin = git(project, "remote", "get-url", "origin")
+    git(project, "update-index", flag, "SKILL.md")
+    (project / "SKILL.md").write_text("hidden change\n")
+    assert git(project, "status", "--porcelain") == ""
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project, expected_origin=origin) == 2
+    assert "hidden index flags" in capsys.readouterr().err
+
+
+def test_verify_refuses_wrong_origin(tmp_path, capsys):
+    project = make_remote(tmp_path)
+
+    assert update.main(["verify", "v0.1.0"], project_dir=project,
+                       expected_origin="https://example.invalid/wrong.git") == 2
+    assert "unexpected origin" in capsys.readouterr().err
+
+
 def test_check_refuses_dirty_checkout_before_fetch(tmp_path, capsys):
     project = make_remote(tmp_path)
     origin = git(project, "remote", "get-url", "origin")

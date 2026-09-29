@@ -36,7 +36,7 @@ import config
 from canvas_client import CanvasClient, CanvasError, WRITE_METHODS, build_url, normalize_path, project
 from extensions.rubrics import RubricError
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 DEFAULT_PREVIEW_TTL = 600            # seconds a preview stays valid
 SUMMARY_KEYS = ("id", "name", "title", "display_name", "workflow_state", "published",
                 "due_at", "html_url", "updated_at")
