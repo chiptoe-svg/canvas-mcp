@@ -7,9 +7,10 @@ service. Tools:
     canvas_prepare_write(method, path, body)       -> preview_id (no change is made)
     canvas_apply_write(preview_id)                 -> applies exactly that preview, once
 
-With --enable-rubrics, also:
-
+Also:
     prepare_rubric_create / apply_rubric_create
+
+With --enable-rubric-grading, also:
     prepare_rubric_grading / apply_rubric_grading
 
 Writes are OFF unless the server is started with --writes (see README, "Write approval").
@@ -35,7 +36,7 @@ import config
 from canvas_client import CanvasClient, CanvasError, WRITE_METHODS, build_url, normalize_path, project
 from extensions.rubrics import RubricError
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 DEFAULT_PREVIEW_TTL = 600            # seconds a preview stays valid
 SUMMARY_KEYS = ("id", "name", "title", "display_name", "workflow_state", "published",
                 "due_at", "html_url", "updated_at")
@@ -304,7 +305,15 @@ class Tools:
                 await require_approval("off", ctx, "")
             plan = self.store.take(preview_id, kind, client.host)
             await require_approval(self.writes, ctx, client.scrub(describe(plan)))
-            result = await anyio.to_thread.run_sync(lambda: fn(client, plan))
+            try:
+                result = await anyio.to_thread.run_sync(lambda: fn(client, plan))
+            except (CanvasError, RubricError):
+                raise
+            except Exception as err:
+                result = {"ok": False, "outcome": "uncertain", "do_not_retry": True,
+                          "error": ("WRITE STATUS UNCERTAIN: rubric apply failed after confirmation "
+                                    "with internal %s; inspect Canvas before doing anything else"
+                                    % type(err).__name__)}
         except CanvasError as err:
             result = err.as_dict()
             if err.outcome == "uncertain":
@@ -345,7 +354,7 @@ LOCAL_TEST = dict(read_only_hint=True, destructive_hint=False, idempotent_hint=T
                   open_world_hint=False)
 
 
-def build_server(tools: Tools, enable_rubrics: bool = False):
+def build_server(tools: Tools, enable_rubric_grading: bool = False):
     server = MCPServer(
         name="canvas", version=VERSION,
         instructions=("Local access to the user's own Canvas account. Read with canvas_read. "
@@ -394,9 +403,8 @@ def build_server(tools: Tools, enable_rubrics: bool = False):
         """
         return await tools.test_confirmation(ctx)
 
-    if enable_rubrics:
-        from extensions import rubrics
-        rubrics.register(server, tools, PREPARE, APPLY)
+    from extensions import rubrics
+    rubrics.register(server, tools, PREPARE, APPLY, enable_grading=enable_rubric_grading)
     return server
 
 
@@ -405,16 +413,22 @@ def main(argv=None) -> int:
     parser.add_argument("--writes", choices=("off", "confirm"), default="off",
                         help="off (default): no Canvas changes. confirm: each apply asks you "
                              "through MCP elicitation and refuses without an explicit accept.")
-    parser.add_argument("--enable-rubrics", action="store_true",
-                        help="add the optional rubric creation and rubric grading tools")
+    parser.add_argument("--enable-rubric-grading", action="store_true",
+                        help="add optional batch rubric grading; rubric creation is standard")
+    parser.add_argument("--enable-rubrics", dest="legacy_enable_rubrics", action="store_true",
+                        help=argparse.SUPPRESS)
     parser.add_argument("--preview-ttl", type=int, default=DEFAULT_PREVIEW_TTL,
                         help="seconds a preview stays valid (60-3600, default 600)")
     args = parser.parse_args(argv)
     if not 60 <= args.preview_ttl <= 3600:
         parser.error("--preview-ttl must be between 60 and 3600")
     tools = Tools(CanvasClient.from_settings, writes=args.writes, store=PreviewStore(ttl=args.preview_ttl))
-    print("canvas-mcp %s: writes=%s rubrics=%s" % (VERSION, args.writes, args.enable_rubrics), file=sys.stderr)
-    build_server(tools, enable_rubrics=args.enable_rubrics).run("stdio")
+    enable_grading = args.enable_rubric_grading or args.legacy_enable_rubrics
+    if args.legacy_enable_rubrics:
+        print("canvas-mcp: --enable-rubrics is deprecated; use --enable-rubric-grading", file=sys.stderr)
+    print("canvas-mcp %s: writes=%s rubric_grading=%s" % (VERSION, args.writes, enable_grading),
+          file=sys.stderr)
+    build_server(tools, enable_rubric_grading=enable_grading).run("stdio")
     return 0
 
 

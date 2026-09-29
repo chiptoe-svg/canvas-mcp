@@ -261,7 +261,7 @@ def test_token_never_appears_in_any_tool_output():
 
 
 def test_tool_annotations_are_accurate():
-    server = canvas_mcp.build_server(tools_for(course_fake()), enable_rubrics=True)
+    server = canvas_mcp.build_server(tools_for(course_fake()), enable_rubric_grading=True)
     tools = {t.name: t.annotations for t in anyio.run(server.list_tools)}
     for name in ("canvas_apply_write", "apply_rubric_create", "apply_rubric_grading"):
         assert tools[name].destructive_hint is True and tools[name].read_only_hint is False
@@ -269,12 +269,81 @@ def test_tool_annotations_are_accurate():
         assert tools[name].read_only_hint is True and tools[name].destructive_hint is False
 
 
-def test_rubric_tools_are_absent_unless_enabled():
+def test_rubric_creation_is_standard_but_grading_is_opt_in():
     names = {t.name for t in anyio.run(canvas_mcp.build_server(tools_for(course_fake())).list_tools)}
     assert names == {"canvas_read", "canvas_prepare_write", "canvas_apply_write",
-                     "canvas_test_confirmation"}
+                     "canvas_test_confirmation", "prepare_rubric_create", "apply_rubric_create"}
+    assert "prepare_rubric_grading" not in names
+    assert "apply_rubric_grading" not in names
+
+
+def test_standard_rubric_create_still_refuses_when_server_writes_are_off():
+    fake = FakeCanvas({("GET", "/api/v1/courses/1"): {"id": 1, "name": "Bio 101"}})
+    server = canvas_mcp.build_server(tools_for(fake, writes="off"))
+    definition = {"title": "Simple", "criteria": [{"description": "Quality", "points": 5,
+                  "ratings": [{"description": "Complete", "points": 5},
+                              {"description": "Missing", "points": 0}]}]}
+    preview, _ = call(server, "prepare_rubric_create", {"course_id": 1, "definition": definition})
+    assert preview["ok"], preview
+    out, seen = call(server, "apply_rubric_create", {"preview_id": preview["preview_id"]}, elicit=ACCEPT)
+    assert out["ok"] is False and "disabled" in out["error"]
+    assert seen == [] and fake.writes() == []
+
+
+def test_rubric_create_tools_call_the_implementations_over_mcp():
+    from test_rubrics import RUBRIC_DEF, create_fake
+
+    fake = create_fake()
+    server = canvas_mcp.build_server(tools_for(fake))
+    preview, _ = call(server, "prepare_rubric_create", {"course_id": 1, "definition": RUBRIC_DEF})
+    result, seen = call(server, "apply_rubric_create", {"preview_id": preview["preview_id"]}, elicit=ACCEPT)
+    assert result["ok"] and result["rubric_id"] == 77
+    assert len(seen) == 1 and len(fake.writes()) == 1
+
+
+def test_malformed_rubric_readback_after_write_is_uncertain_and_never_retryable():
+    from test_rubrics import RUBRIC_DEF, create_fake
+
+    fake = create_fake(readback={"id": 77, "data": [None, None]})
+    server = canvas_mcp.build_server(tools_for(fake))
+    preview, _ = call(server, "prepare_rubric_create", {"course_id": 1, "definition": RUBRIC_DEF})
+    result, _ = call(server, "apply_rubric_create", {"preview_id": preview["preview_id"]}, elicit=ACCEPT)
+    assert len(fake.writes()) == 1
+    assert result["ok"] is False and result["outcome"] == "uncertain"
+    assert result["do_not_retry"] is True and result["error"].startswith("WRITE STATUS UNCERTAIN:")
+
+
+def test_rubric_grading_tools_call_the_implementations_over_mcp():
+    from test_rubrics import Course, entry
+
+    course = Course(post_manually=True)
+    server = canvas_mcp.build_server(tools_for(course.fake), enable_rubric_grading=True)
+    preview, _ = call(server, "prepare_rubric_grading",
+                      {"course_id": 1, "assignment_id": 20, "grades": [entry(101, grade=12)]})
+    result, seen = call(server, "apply_rubric_grading", {"preview_id": preview["preview_id"]}, elicit=ACCEPT)
+    assert result["ok"] and result["written"] == [101]
+    assert len(seen) == 1
 
 
 def test_default_write_mode_is_off():
     import inspect
     assert inspect.signature(Tools).parameters["writes"].default == "off"
+
+
+@pytest.mark.parametrize("flag", ["--enable-rubric-grading", "--enable-rubrics"])
+def test_current_and_legacy_grading_flags_enable_only_grading(flag, monkeypatch, capsys):
+    captured = {}
+
+    class Server:
+        def run(self, transport):
+            captured["transport"] = transport
+
+    def fake_build(tools, enable_rubric_grading=False):
+        captured["enabled"] = enable_rubric_grading
+        return Server()
+
+    monkeypatch.setattr(canvas_mcp, "build_server", fake_build)
+    assert canvas_mcp.main([flag]) == 0
+    assert captured == {"enabled": True, "transport": "stdio"}
+    warning = capsys.readouterr().err
+    assert ("deprecated" in warning) is (flag == "--enable-rubrics")

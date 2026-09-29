@@ -1,11 +1,11 @@
 # canvas-mcp
 
-A small, local MCP server that lets Codex read — and, only if you turn it on, change — **your
-own** Canvas account. It is a Python project you download, read, and edit. It is not a hosted
+A small, local MCP server that lets Codex safely read and make individually approved changes in
+**your own** Canvas account. It is a Python project you download, read, and edit. It is not a hosted
 service, not an app your institution runs, and nobody supports it for you.
 
 **New here?** Use the [visual setup guide](https://chiptoe-svg.github.io/canvas-mcp/) for a
-step-by-step installation, write opt-in, safety, and uninstall walkthrough.
+step-by-step installation, guarded-write, safety, and uninstall walkthrough.
 
 **Install from a computer, not a phone or tablet.** The guide is responsive so it is readable on
 any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python,
@@ -15,9 +15,8 @@ and a terminal are available.
   open port, no tunnel, no background service, and no OAuth app.
 - **Your account, your token.** You create a Canvas personal access token and it is stored only
   in the macOS Keychain or Windows Credential Manager.
-- **Reads by default, writes off.** Changes are disabled until you start the server with
-  `--writes confirm`, and even then every change is previewed first and needs your explicit
-  yes in a confirmation dialog.
+- **Guarded writes in the recommended setup.** Every change is previewed first and needs your
+  explicit yes in a confirmation dialog. A strict read-only setup remains available.
 
 **Follow your institution's policies.** Many institutions have rules about personal access
 tokens and about sending student information to AI services. Check them before you use this with
@@ -32,7 +31,7 @@ real courses. This project makes no assumption about any particular institution.
 - [Connect Canvas](#connect-canvas)
 - [Add it to Codex](#add-it-to-codex)
 - [Write approval](#write-approval)
-- [The rubric extension](#the-rubric-extension)
+- [Rubrics](#rubrics)
 - [Token and data handling](#token-and-data-handling)
 - [Security review record](SECURITY_REVIEW.md)
 - [Updating](#updating)
@@ -41,7 +40,7 @@ real courses. This project makes no assumption about any particular institution.
 
 ## What it can do
 
-Four tools are always present:
+Six tools are always present:
 
 | Tool | What it does |
 |---|---|
@@ -49,9 +48,11 @@ Four tools are always present:
 | `canvas_prepare_write(method, path, body)` | Checks a `POST`/`PUT`/`PATCH`/`DELETE`, shows the exact URL and body plus what the target looks like now, and returns a one-time `preview_id`. **Changes nothing.** |
 | `canvas_apply_write(preview_id)` | Sends exactly that previewed request, once, after you confirm it. |
 | `canvas_test_confirmation()` | Opens the same server-side confirmation without preparing, sending, or changing anything in Canvas. |
+| `prepare_rubric_create(course_id, definition, assignment_id?)` | Validates and previews a new rubric. **Changes nothing.** |
+| `apply_rubric_create(preview_id)` | Creates the approved rubric and reads it back. |
 
-With `--enable-rubrics`, four more tools create rubrics and grade with them. See
-[The rubric extension](#the-rubric-extension).
+With `--enable-rubric-grading`, two additional tools support guarded batch grading. See
+[Rubrics](#rubrics).
 
 `SKILL.md` is a short Codex skill describing how to use these tools for everyday instructor
 work: summarising activity, finding late work, drafting feedback and announcements.
@@ -72,7 +73,7 @@ it makes that access constrained and repeatable:
   file, or MCP input.
 - Requests are locked to one configured HTTPS Canvas host and approved API paths. Redirects,
   other hosts, traversal paths, and credential-management endpoints are refused.
-- Writes are disabled by default. When enabled, every write is an exact, expiring, one-time
+- When the server is write-enabled, every write is an exact, expiring, one-time
   preview followed by a server-side confirmation; uncertain writes are never automatically retried.
 - Tested code enforces the rules on every request rather than relying on each prompt to remember
   them. Field projection and response limits help reduce unnecessary student data sent to Codex.
@@ -90,22 +91,24 @@ installation. It installs a tagged source checkout, not a global application: th
 open port, telemetry or auto-update.
 
 ```text
-Install canvas-mcp v0.1.1 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
+Install canvas-mcp v0.1.2 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
 Use only the exact published tag; never substitute main, and do not overwrite an existing folder.
 After cloning, read AGENTS.md, create .venv, install ".[test]", and run pytest. Run
 connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
 wait while I enter the token at its hidden prompt. After I say done, verify status, register only
-the read-only `canvas` server with `codex mcp add`, run `connect_canvas.py install-skill --apply`,
-and verify with `codex mcp get canvas`. Never request my token or make a Canvas write.
+the `canvas` server with `codex mcp add`, using `--writes confirm`, run
+`connect_canvas.py install-skill --apply`, and verify with `codex mcp get canvas`. Then run
+`canvas_test_confirmation`; it must not contact Canvas. Never request my token or make a real
+Canvas write during setup.
 ```
 
 The only step Codex must not perform for you is entering the Canvas URL and access token. Run the
-command it prints in a terminal you control; the token prompt is hidden. The first setup is
-deliberately read-only. After you have used reads successfully, see [Write approval](#write-approval)
-to opt into changes and the optional rubric tools.
+command it prints in a terminal you control; the token prompt is hidden. The recommended setup
+includes guarded writes and rubric creation, but no write happens unless you ask for one, approve
+its exact preview, and accept the server's confirmation. Batch rubric grading remains separate.
 
-At any time, this checkout can print its exact connection command and read-only `codex mcp add`
-command without changing anything. Add `--writes` only when you want the optional write block:
+At any time, this checkout can print its exact connection and guarded-write `codex mcp add`
+commands without changing anything. Add `--read-only` for a strict read-only registration:
 
 ```sh
 .venv/bin/python connect_canvas.py setup-info
@@ -116,7 +119,7 @@ command without changing anything. Add `--writes` only when you want the optiona
 You need Python 3.10 or newer (`python3 --version`) and Git.
 
 ```sh
-git clone --branch v0.1.1 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.2 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
 python3 -m venv .venv
 .venv/bin/pip install -e .
@@ -140,7 +143,7 @@ not yet been tested on a Windows computer. Install Python 3.10+ from python.org 
 Windows. In PowerShell:
 
 ```powershell
-git clone --branch v0.1.1 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.2 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
 py -m venv .venv
 .venv\Scripts\pip install -e .
@@ -172,7 +175,8 @@ Other commands:
 | `connect_canvas.py reconnect` | Replaces the token, and optionally the URL. Use it when a token expires. |
 | `connect_canvas.py disconnect` | Deletes the stored token and the saved URL from this computer. |
 | `connect_canvas.py setup-info` | Prints exact connection and Codex setup instructions; changes nothing. |
-| `connect_canvas.py setup-info --writes` | Prints the exact write-enabled block; add `--enable-rubrics` only when wanted. |
+| `connect_canvas.py setup-info --read-only` | Prints a strict read-only registration command instead. |
+| `connect_canvas.py setup-info --enable-rubric-grading` | Includes the optional batch rubric grading tools. |
 | `connect_canvas.py install-skill` | Previews installation of the matching skill; `--apply` makes a verified backup and installs it. |
 | `update.py check` | Checks the latest stable release and prints its tag, commit, and notes without changing project files. |
 | `update.py apply TAG` | Rechecks and installs exactly the approved tag, runs tests, and refreshes the matching skill. |
@@ -192,11 +196,11 @@ saved and you can run the connection command again.
 
 ## Add it to Codex
 
-This project never edits Codex configuration. For a read-only server, use Codex's configuration
-command with the absolute paths to your clone:
+This project never edits Codex configuration directly. Use Codex's own registration command with
+the absolute paths to your clone:
 
 ```sh
-codex mcp add canvas -- /Users/you/canvas-mcp/.venv/bin/python /Users/you/canvas-mcp/canvas_mcp.py
+codex mcp add canvas -- /Users/you/canvas-mcp/.venv/bin/python /Users/you/canvas-mcp/canvas_mcp.py --writes confirm
 codex mcp get canvas
 ```
 
@@ -204,74 +208,26 @@ If a server named `canvas` already exists, inspect it first; do not remove or re
 You can also add a stdio server in **Codex Settings > MCP servers**. Restart Codex after adding
 it, then use `/mcp` to confirm it is connected and ask something like "list my Canvas courses."
 
-For finer settings, Codex reads MCP servers from `~/.codex/config.toml` (Windows:
-`%USERPROFILE%\.codex\config.toml`). Copy the block from
-[`examples/codex-mcp-config.example.toml`](examples/codex-mcp-config.example.toml) and replace
-the paths with the absolute paths to your clone.
-
-```toml
-[mcp_servers.canvas]
-command = "/Users/you/canvas-mcp/.venv/bin/python"
-args = ["/Users/you/canvas-mcp/canvas_mcp.py"]
-```
-
-That block also starts the server read-only.
+For strict read-only use, omit `--writes confirm`. Batch rubric grading is a separate opt-in:
+append `--enable-rubric-grading`. Existing v0.1.1 configurations using `--enable-rubrics` remain
+compatible, but the old name is deprecated.
 
 To use the skill, run `.venv/bin/python connect_canvas.py install-skill` to preview the destination,
 then repeat it with `--apply` after review.
 
 ## Write approval
 
-Writes are **off** by default. Every `apply` tool then refuses and sends nothing. The preview
-still shows the exact change, so you can make it yourself in Canvas.
+The recommended registration starts the server with `--writes confirm`. That does not allow
+silent changes. A write still requires all of these steps:
 
-Enable writes only after read-only use is working. The easiest route starts in a **local Codex
-task, not Terminal**. Paste this prompt into Codex:
+1. Codex prepares an exact request and shows the current target. Nothing changes.
+2. You approve that specific preview.
+3. The server opens its own confirmation and proceeds only if you explicitly accept.
+4. The one-time preview is sent once and, where supported, read back.
 
-```text
-Help me enable writes in my tagged canvas-mcp checkout at ~/canvas-mcp. Read AGENTS.md, run the
-tests and `connect_canvas.py status`, then run `connect_canvas.py setup-info --writes`. Do not
-edit config.toml or Canvas. Inspect my existing `canvas` MCP entry and print only the exact
-replacement block, preserving unrelated settings and excluding rubrics. Show me how to make a
-unique verified backup, open config.toml in a text editor, replace—not duplicate—the block, and
-restart Codex. Keep top-level `approvals_reviewer = "user"` and the server's
-`default_tools_approval_mode = "writes"`.
-```
-
-Codex prints the exact replacement block but does not edit your configuration. The current
-desktop Settings screen does not expose the documented **Open config.toml** control; that control
-is for the Codex IDE extension. On macOS, open Terminal and run:
-
-```sh
-backup_dir="$(mktemp -d "$HOME/.codex/canvas-mcp-config-backup.XXXXXX")" &&
-cp -p "$HOME/.codex/config.toml" "$backup_dir/config.toml" &&
-cmp -s "$HOME/.codex/config.toml" "$backup_dir/config.toml" &&
-printf 'Verified backup: %s\n' "$backup_dir/config.toml" &&
-open -t "$HOME/.codex/config.toml"
-```
-
-This creates a uniquely named backup, prints its location, and opens the real file in a
-plain-text editor. Replace the existing `[mcp_servers.canvas]` block, save, close and reopen
-Codex, then ask Codex to verify the Canvas server configuration. On Windows, ask Codex for the
-equivalent PowerShell backup-and-open commands; the complete Windows setup path is not yet
-tested. The MCP protocol and fail-closed confirmation gate are covered by automated tests. The
-exact presentation can vary by Codex client, so verify it safely after restarting by asking Codex
-to call `canvas_test_confirmation`; accepting that test cannot contact or change Canvas.
-
-For the manual route, run `connect_canvas.py setup-info --writes` in Terminal to print the write
-settings with the real paths for this checkout. Add `--enable-rubrics` only when you deliberately
-want rubric tools. Merge the result carefully rather than appending the whole fragment blindly: its top-level
-`approvals_reviewer` line must appear before every `[table]` in `config.toml`. The write-only
-server arguments are:
-
-```toml
-args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm"]
-```
-
-To add the optional rubric tools, also add `"--enable-rubrics"` and set
-`tool_timeout_sec = 600`. A 50-student grading batch can exceed Codex's default tool timeout.
-Keep `default_tools_approval_mode = "writes"` on this server and `approvals_reviewer = "user"`
-as a top-level setting. Do not enable writes or rubrics merely to test the installation.
+After setup, ask Codex to call `canvas_test_confirmation`. It exercises the real confirmation
+gate but cannot contact or change Canvas. If you prefer that every apply tool refuse outright,
+register the server using `connect_canvas.py setup-info --read-only`.
 
 In `confirm` mode, before any `apply` tool sends anything, **the server itself** asks you through
 an MCP confirmation dialog (an "elicitation") that repeats the exact request. It proceeds only if
@@ -299,10 +255,12 @@ Canvas.
 **If a result says `WRITE STATUS UNCERTAIN`**, the request was sent but its effect could not be
 confirmed. Do not retry. Look at the object in Canvas (or read it back) first.
 
-## The rubric extension
+## Rubrics
 
-Optional, for instructors who grade with rubrics. Enable it by adding `"--enable-rubrics"` to
-`args`. It needs `--writes confirm` to actually change anything.
+Rubric creation is included in the standard tool set. It uses the same preview, personal
+confirmation, one-time apply, and read-back workflow as other writes. Batch rubric grading is a
+separate advanced opt-in: register with `--enable-rubric-grading`. It also needs
+`--writes confirm` to change anything.
 
 | Tool | What it does |
 |---|---|
@@ -380,8 +338,8 @@ results and tell me to restart Codex. Do not edit config.toml or call Canvas.
 prompt once; later releases use the command above:
 
 ```text
-Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.1. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.1 is
+Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.2. Read AGENTS.md. Verify the
+checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.2 is
 contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
 detached to that exact commit, reinstall ".[test]", run pytest, and run
 `connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.
@@ -396,7 +354,7 @@ For the manual route, move an unedited checkout to a specific published version:
 cd canvas-mcp
 git status                  # stop and ask Codex for help if this shows local edits
 git fetch --tags
-git switch --detach v0.1.1  # replace with the release you reviewed
+git switch --detach v0.1.2  # replace with the release you reviewed
 .venv/bin/pip install -e .  # picks up any new dependency
 .venv/bin/pytest            # optional: confirm it still passes
 ```
@@ -468,7 +426,7 @@ The code is meant to be read:
 | `canvas_mcp.py` | The MCP tools, previews and the write-approval gate |
 | `connect_canvas.py` | The `connect` / `status` / `reconnect` / `disconnect` command |
 | `uninstall.py` | Removes the token, settings, skill copy, `.venv` and (optionally) the folder |
-| `extensions/rubrics.py` | The optional rubric tools |
+| `extensions/rubrics.py` | Standard rubric creation and optional batch grading tools |
 | `tests/` | Tests against an in-memory fake Canvas; no network |
 
 If you change it with an AI coding agent, `AGENTS.md` gives the agent the project's rules.

@@ -6,24 +6,30 @@
 # This is a top-level setting: if you use it, uncomment it here, before any [table].
 # approvals_reviewer = "user"
 
-# --- macOS, read-only (the default) -------------------------------------------------------
+# --- macOS, recommended: guarded writes and rubric creation -------------------------------
 [mcp_servers.canvas]
 command = "/Users/you/canvas-mcp/.venv/bin/python"
-args = ["/Users/you/canvas-mcp/canvas_mcp.py"]
+args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm"]
+# Keep Codex's own approval prompt for every tool marked as a write.
+default_tools_approval_mode = "writes"
 
-# --- macOS, writes with confirmation, plus the rubric tools --------------------------------
+# --- macOS, optional batch rubric grading -------------------------------------------------
 # [mcp_servers.canvas]
 # command = "/Users/you/canvas-mcp/.venv/bin/python"
-# args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm", "--enable-rubrics"]
+# args = ["/Users/you/canvas-mcp/canvas_mcp.py", "--writes", "confirm", "--enable-rubric-grading"]
 # # A 50-student grading batch makes about 150 Canvas requests after you confirm; allow time.
 # tool_timeout_sec = 600
-# # Keep Codex's own approval prompt for every tool marked as a write.
 # default_tools_approval_mode = "writes"
+
+# --- macOS, strict read-only --------------------------------------------------------------
+# [mcp_servers.canvas]
+# command = "/Users/you/canvas-mcp/.venv/bin/python"
+# args = ["/Users/you/canvas-mcp/canvas_mcp.py"]
 
 # --- Windows (single quotes keep the backslashes literal) ----------------------------------
 # [mcp_servers.canvas]
 # command = 'C:\Users\you\canvas-mcp\.venv\Scripts\python.exe'
-# args = ['C:\Users\you\canvas-mcp\canvas_mcp.py']
+# args = ['C:\Users\you\canvas-mcp\canvas_mcp.py', '--writes', 'confirm']
 
 # Do NOT add this: it removes Codex's own prompt for the tool.
 # [mcp_servers.canvas.tools.canvas_apply_write]

@@ -264,40 +264,43 @@ def test_connection_errors_name_the_active_python_and_absolute_script():
     assert message.endswith(" connect")
 
 
-def test_setup_info_prints_exact_read_only_command_and_advanced_block(capsys):
+def test_setup_info_prints_exact_guarded_write_command(capsys):
     assert connect_canvas.cmd_setup_info(Namespace()) == 0
 
     output = capsys.readouterr().out
     python = str(Path(sys.executable).absolute())
     server = str(Path(connect_canvas.__file__).resolve().with_name("canvas_mcp.py"))
-    assert "Read-only Codex setup (recommended first):" in output
+    assert "Guarded-write Codex setup (recommended):" in output
     assert python in output
     assert server in output
     assert "codex mcp add canvas --" in output
-    assert '"--writes"' not in output
+    assert "--writes confirm" in output
     assert "does not edit" in output
 
 
 def test_advanced_config_places_approval_reviewer_at_top_level():
     data = tomllib.loads(connect_canvas.advanced_config("/venv/python", "/repo/canvas_mcp.py",
-                                                        enable_rubrics=True))
+                                                        enable_rubric_grading=True))
 
     assert data["approvals_reviewer"] == "user"
     assert "approvals_reviewer" not in data["mcp_servers"]["canvas"]
     assert data["mcp_servers"]["canvas"]["tool_timeout_sec"] == 600
 
 
-def test_setup_info_writes_is_exact_and_rubrics_are_separate(capsys):
-    assert connect_canvas.main(["setup-info", "--writes"]) == 0
-    writes = capsys.readouterr().out
-    assert '"--writes", "confirm"' in writes
-    assert '"--enable-rubrics"' not in writes
-    assert "tool_timeout_sec" not in writes
+def test_setup_info_read_only_and_rubric_grading_are_separate(capsys):
+    assert connect_canvas.main(["setup-info", "--read-only"]) == 0
+    read_only = capsys.readouterr().out
+    assert "--writes confirm" not in read_only
+    assert "--enable-rubric-grading" not in read_only
+
+    assert connect_canvas.main(["setup-info", "--enable-rubric-grading"]) == 0
+    grading = capsys.readouterr().out
+    assert "--writes confirm --enable-rubric-grading" in grading
+    assert "config.toml" not in grading
 
     assert connect_canvas.main(["setup-info", "--writes", "--enable-rubrics"]) == 0
-    rubrics = capsys.readouterr().out
-    assert '"--writes", "confirm", "--enable-rubrics"' in rubrics
-    assert "tool_timeout_sec = 600" in rubrics
+    legacy = capsys.readouterr().out
+    assert "--writes confirm --enable-rubric-grading" in legacy
 
 
 def test_install_skill_preview_changes_nothing(tmp_path, monkeypatch, capsys):

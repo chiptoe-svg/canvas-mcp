@@ -59,11 +59,11 @@ Use `canvas_prepare_write` for any other ordinary change (a due date, a page, pu
 module). For `PUT`/`PATCH`/`DELETE`, show `current_target` next to the new body so the person
 sees what changes. One preview is one request.
 
-## Rubrics (only when the server has `--enable-rubrics`)
+## Rubrics
 
 - **Create:** `prepare_rubric_create(course_id, definition, assignment_id?)`. Show the plan
   (criteria, ratings, total, which assignment it attaches to), then `apply_rubric_create`.
-- **Grade:**
+- **Grade (only when the server has `--enable-rubric-grading`):**
   1. First read the assignment to get the live criterion IDs:
      `canvas_read("courses/123/assignments/20", fields=["rubric", "points_possible", "post_manually"])`.
   2. Then `prepare_rubric_grading(...)` for up to 50 ungraded students.

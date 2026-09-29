@@ -1,6 +1,7 @@
-"""Optional advanced extension: rubric creation and batch rubric grading.
+"""Rubric creation plus optional advanced batch rubric grading.
 
-Enabled only when the server is started with ``--enable-rubrics``. Ported from
+Creation is part of the standard tool set. Batch grading is enabled only when the server is
+started with ``--enable-rubric-grading``. Ported from
 canvas-api-guard's level2/canvas_api_operations.py (create_rubric, grade_with_rubric), with
 the CLI, subprocess guard calls and audit log removed. Every Canvas request goes through the
 same host-locked CanvasClient as the generic tools.
@@ -208,9 +209,9 @@ def apply_rubric_create(client: CanvasClient, plan: dict) -> dict:
     result = {"ok": not problems, "outcome": "verified" if not problems else "uncertain",
               "rubric_id": rubric_id, "course_id": course_id, "assignment_id": assignment_id}
     if problems:
-        result["error"] = "rubric %s was created but did not read back as prepared: %s" % (
-            rubric_id, "; ".join(problems))
-        return result
+        return _uncertain("rubric %s was created but did not read back as prepared: %s" % (
+            rubric_id, "; ".join(problems)), rubric_id=rubric_id, course_id=course_id,
+            assignment_id=assignment_id)
     if assignment_id is not None:
         try:
             assignment = client.get("courses/%d/assignments/%d" % (course_id, assignment_id)) or {}
@@ -235,12 +236,17 @@ def compare_rubric(expected: dict, actual: dict) -> list[str]:
     if not isinstance(got, list) or len(got) != len(want):
         return ["criterion count %s, expected %d" % (len(got) if isinstance(got, list) else "?", len(want))]
     for i, (w, g) in enumerate(zip(want, got), 1):
+        if not isinstance(g, dict):
+            problems.append("criterion %d malformed" % i)
+            continue
         if g.get("description") != w["description"] or not same_number(g.get("points"), w["points"]):
             problems.append("criterion %d" % i)
             continue
-        wr, gr = list(w["ratings"].values()), g.get("ratings") or []
-        if len(wr) != len(gr) or any(a.get("description") != b["description"] or not same_number(a.get("points"), b["points"])
-                                     for a, b in zip(gr, wr)):
+        wr, gr = list(w["ratings"].values()), g.get("ratings")
+        if (not isinstance(gr, list) or len(wr) != len(gr)
+                or any(not isinstance(a, dict) or a.get("description") != b["description"]
+                       or not same_number(a.get("points"), b["points"])
+                       for a, b in zip(gr if isinstance(gr, list) else [], wr))):
             problems.append("criterion %d ratings" % i)
     return problems
 
@@ -432,7 +438,9 @@ def _post_policy_manual(client: CanvasClient, assignment_id: int, course_id: int
     return None
 
 
-def verify_submission(sub: dict, write: dict) -> list[str]:
+def verify_submission(sub: Any, write: dict) -> list[str]:
+    if not isinstance(sub, dict):
+        return ["submission read-back was not an object"]
     problems = []
     got = sub.get("rubric_assessment") if isinstance(sub.get("rubric_assessment"), dict) else None
     for cid, want in write["body"]["rubric_assessment"].items():
@@ -550,8 +558,15 @@ def _describe_grading(plan: dict) -> str:
     return "\n".join(lines)
 
 
-def register(server, tools, prepare_hints: dict, apply_hints: dict) -> None:
-    """Add the four rubric tools to the MCP server (called only with --enable-rubrics)."""
+_PREPARE_CREATE = prepare_rubric_create
+_APPLY_CREATE = apply_rubric_create
+_PREPARE_GRADING = prepare_rubric_grading
+_APPLY_GRADING = apply_rubric_grading
+
+
+def register(server, tools, prepare_hints: dict, apply_hints: dict,
+             *, enable_grading: bool = False) -> None:
+    """Add rubric creation, and add batch grading only when explicitly enabled."""
 
     @server.tool(annotations=ToolAnnotations(title="Prepare rubric creation (no change made)", **prepare_hints))
     async def prepare_rubric_create(course_id: int, definition: dict[str, Any],
@@ -564,13 +579,16 @@ def register(server, tools, prepare_hints: dict, apply_hints: dict) -> None:
         to that assignment with 'use this rubric for grading' OFF.
         """
         return await anyio.to_thread.run_sync(lambda: tools.prepare_rubric(
-            "rubric_create", lambda c: prepare_rubric_create(c, course_id, definition, assignment_id)))
+            "rubric_create", lambda c: _PREPARE_CREATE(c, course_id, definition, assignment_id)))
 
     @server.tool(annotations=ToolAnnotations(title="Create the approved rubric", **apply_hints))
     async def apply_rubric_create(preview_id: str, ctx: Context) -> dict:
         """Create the rubric from an approved prepare_rubric_create preview, then read every
         criterion and rating back. The preview ID is consumed. Never retry an uncertain result."""
-        return await tools.apply_rubric("rubric_create", preview_id, ctx, apply_rubric_create, _describe_create)
+        return await tools.apply_rubric("rubric_create", preview_id, ctx, _APPLY_CREATE, _describe_create)
+
+    if not enable_grading:
+        return
 
     @server.tool(annotations=ToolAnnotations(title="Prepare rubric grading (no change made)", **prepare_hints))
     async def prepare_rubric_grading(course_id: int, assignment_id: int, grades: list[dict[str, Any]],
@@ -583,11 +601,11 @@ def register(server, tools, prepare_hints: dict, apply_hints: dict) -> None:
         manual posting before any grade is written.
         """
         return await anyio.to_thread.run_sync(lambda: tools.prepare_rubric(
-            "rubric_grading", lambda c: prepare_rubric_grading(c, course_id, assignment_id, grades,
-                                                               keep_post_policy)))
+            "rubric_grading", lambda c: _PREPARE_GRADING(c, course_id, assignment_id, grades,
+                                                         keep_post_policy)))
 
     @server.tool(annotations=ToolAnnotations(title="Write the approved rubric grades", **apply_hints))
     async def apply_rubric_grading(preview_id: str, ctx: Context) -> dict:
         """Write an approved prepare_rubric_grading batch, verifying each student. Stops at the
         first refusal or uncertain write and reports exactly who was written. Never retry."""
-        return await tools.apply_rubric("rubric_grading", preview_id, ctx, apply_rubric_grading, _describe_grading)
+        return await tools.apply_rubric("rubric_grading", preview_id, ctx, _APPLY_GRADING, _describe_grading)

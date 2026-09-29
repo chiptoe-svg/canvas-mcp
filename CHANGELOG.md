@@ -6,6 +6,18 @@ example changed, because those are copied by hand.
 
 ## Unreleased
 
+## [0.1.2] - 2026-09-28
+
+- Made guarded writes and rubric creation part of the recommended setup, while keeping batch
+  rubric grading behind the explicit `--enable-rubric-grading` flag. The beginner guide now uses
+  `codex mcp add` directly and no longer requires a manual `config.toml` edit. The old
+  `--enable-rubrics` flag remains as a deprecated compatibility alias. `SKILL.md` and
+  `examples/codex-mcp-config.example.toml` changed.
+- Fixed the rubric MCP wrappers so their prepare and apply tools call the tested rubric
+  implementations instead of shadowing those function names and failing with an internal error.
+- Made malformed or mismatched rubric and submission read-backs fail closed as
+  `WRITE STATUS UNCERTAIN` with `do_not_retry`, including an unexpected-error backstop after a
+  confirmed rubric apply.
 - Removed the hero tagline from the GitHub Pages guide and shortened its title to “Safe Codex
   Access into Canvas.” `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
 - Added a “Why” section to the README and GitHub Pages guide explaining what canvas-mcp adds over
@@ -13,6 +25,7 @@ example changed, because those are copied by hand.
   repeatable enforcement. `SKILL.md` and the config example are unchanged.
 - Removed the developer-oriented “Why a tag?” callout from the beginner installation path without
   replacing it. `SKILL.md` and the config example are unchanged.
+- Bumped the package, MCP server, and HTTP user-agent versions together to 0.1.2.
 
 ## [0.1.1] - 2026-09-28
 

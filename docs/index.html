@@ -440,7 +440,7 @@
         <a href="#understand">About</a>
         <a href="#safety">Safety</a>
         <a href="https://github.com/chiptoe-svg/canvas-mcp">GitHub</a>
-        <span class="version">v0.1.1</span>
+        <span class="version">v0.1.2</span>
         <a class="button primary" href="#install">Get started</a>
       </nav>
     </div>
@@ -450,21 +450,21 @@
     <div class="hero-inner">
       <section aria-labelledby="hero-title">
         <h1 id="hero-title">Safe Codex Access into <span>Canvas.</span></h1>
-        <p class="hero-copy"><strong>canvas-mcp</strong> is a small local source project that connects Codex to your own Canvas account. Start read-only. Add writes only if—and when—you choose.</p>
+        <p class="hero-copy"><strong>canvas-mcp</strong> is a small local source project that connects Codex to your own Canvas account. Every change is previewed, personally confirmed, and sent only once.</p>
         <aside class="callout device-note"><strong>Install from your computer—not a phone or tablet.</strong> You can read this guide on any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python, and Terminal are available.</aside>
         <div class="actions">
           <button class="button primary" type="button" data-copy-target="setup-prompt">Copy the setup prompt</button>
           <a class="button secondary" href="https://github.com/chiptoe-svg/canvas-mcp">View source on GitHub</a>
         </div>
-        <p class="microcopy">Release v0.1.1 · Open source · No hosted middleman · No automatic updates</p>
+        <p class="microcopy">Release v0.1.2 · Open source · No hosted middleman · No automatic updates</p>
       </section>
       <aside class="promise" aria-labelledby="promise-title">
         <h2 id="promise-title">A simpler way to work with your courses</h2>
         <ul>
           <li>Read courses, assignments, pages, and submissions.</li>
           <li>Keep the token in Keychain or Credential Manager.</li>
-          <li>Begin read-only, with changes disabled.</li>
-          <li>Preview and personally confirm every enabled write.</li>
+          <li>Preview and personally confirm every change.</li>
+          <li>Keep batch rubric grading as a separate opt-in.</li>
         </ul>
         <p class="plain">This is a local source checkout—not a hosted service, background daemon, global app, or official Instructure product.</p>
       </aside>
@@ -478,8 +478,8 @@
         <li><span class="nav-number">1</span><a href="#understand">Understand</a></li>
         <li><span class="nav-number">2</span><a href="#install">Install</a></li>
         <li><span class="nav-number">3</span><a href="#connect">Connect</a></li>
-        <li><span class="nav-number">4</span><a href="#read">Start read-only</a></li>
-        <li><span class="nav-number">5</span><a href="#writes">Add writes</a></li>
+        <li><span class="nav-number">4</span><a href="#read">Try a read</a></li>
+        <li><span class="nav-number">5</span><a href="#writes">How changes work</a></li>
         <li><span class="nav-number">6</span><a href="#update">Update</a></li>
         <li><span class="nav-number">7</span><a href="#remove">Remove</a></li>
       </ol>
@@ -498,7 +498,7 @@
           <div class="safety-grid">
             <article class="safety-item"><h3>The token has one guarded home</h3><p>Direct commands often require passing the token through a command, environment variable, file, or model-visible context. canvas-mcp accepts it only at a hidden prompt, stores it in Keychain or Credential Manager, and reads it directly when needed.</p></article>
             <article class="safety-item"><h3>Requests stay inside one Canvas</h3><p>Every request is locked to the configured HTTPS host and approved Canvas API paths. Redirects, other hosts, traversal paths, and credential-management endpoints are refused before the token is sent.</p></article>
-            <article class="safety-item"><h3>Writes are a deliberate workflow</h3><p>Direct API commands execute immediately. Here, writes start disabled. When enabled, Codex must prepare an exact preview, you approve that one-time preview, the server asks again, sends it once, and reports uncertain results as “do not retry.”</p></article>
+            <article class="safety-item"><h3>Writes are a deliberate workflow</h3><p>Direct API commands execute immediately. Here, Codex must prepare an exact preview, you approve that one-time preview, the server asks again, sends it once, and reports uncertain results as “do not retry.”</p></article>
             <article class="safety-item"><h3>The safeguards are repeatable</h3><p>Instead of asking each prompt to remember every rule, the server enforces host locking, response limits, field selection, approval, expiry, and read-back in tested code. The matching Codex skill teaches the same workflow every time.</p></article>
           </div>
           <aside class="callout danger"><strong>This does not reduce the token's Canvas permissions.</strong> Canvas still decides what the account may access, and any course or student data returned by a tool becomes visible to Codex. Use the narrowest requests you need and follow your institution's policy.</aside>
@@ -510,7 +510,7 @@
           <span class="step-number" aria-hidden="true">1</span>
           <div>
             <h2 id="understand-title">Understand what this is</h2>
-            <p class="lede">A local bridge between Codex and one instructor's Canvas account. You run it, you hold the token, and you decide whether changes are ever allowed.</p>
+            <p class="lede">A local bridge between Codex and one instructor's Canvas account. You run it, you hold the token, and you personally approve every change.</p>
           </div>
         </div>
         <div class="section-body two-column">
@@ -522,7 +522,7 @@
               <li>Find missing or late submissions.</li>
               <li>Summarize activity and course content.</li>
               <li>Draft feedback and announcements.</li>
-              <li>Optionally create rubrics and grade with them.</li>
+              <li>Create rubrics; optionally enable batch rubric grading.</li>
             </ul>
           </div>
           <aside class="detail-box">
@@ -547,13 +547,15 @@
         </div>
         <div class="section-body">
           <div class="code-wrap">
-            <pre id="setup-prompt">Install canvas-mcp v0.1.1 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
+            <pre id="setup-prompt">Install canvas-mcp v0.1.2 from https://github.com/chiptoe-svg/canvas-mcp.git at ~/canvas-mcp.
 Use only the exact published tag; never substitute main, and do not overwrite an existing folder.
 After cloning, read AGENTS.md, create .venv, install ".[test]", and run pytest. Run
 connect_canvas.py status. If disconnected, give me the visible-terminal `connect` command and
-wait while I enter the token at its hidden prompt. After I say done, verify status, register only
-the read-only `canvas` server with `codex mcp add`, run `connect_canvas.py install-skill --apply`,
-and verify with `codex mcp get canvas`. Never request my token or make a Canvas write.</pre>
+wait while I enter the token at its hidden prompt. After I say done, verify status, register the
+`canvas` server with `codex mcp add` using `--writes confirm`, run
+`connect_canvas.py install-skill --apply`, and verify with `codex mcp get canvas`. Then run
+`canvas_test_confirmation`; it must not contact Canvas. Never request my token or make a real
+Canvas write during setup.</pre>
             <button class="copy-button" type="button" data-copy-target="setup-prompt">Copy</button>
           </div>
           <p class="copy-status" role="status" aria-live="polite"></p>
@@ -581,7 +583,7 @@ and verify with `codex mcp get canvas`. Never request my token or make a Canvas 
             </div>
             <ol class="checklist" start="3">
               <li>Check the displayed <strong>Token destination</strong> hostname, then paste the token at the hidden prompt.</li>
-              <li>Return to Codex and reply <strong>done</strong>. Codex re-checks status and registers the read-only server.</li>
+              <li>Return to Codex and reply <strong>done</strong>. Codex re-checks status and registers the guarded server.</li>
             </ol>
           </div>
           <aside class="detail-box">
@@ -596,8 +598,8 @@ and verify with `codex mcp get canvas`. Never request my token or make a Canvas 
         <div class="section-heading">
           <span class="step-number" aria-hidden="true">4</span>
           <div>
-            <h2 id="read-title">Start read-only</h2>
-            <p class="lede">Use the connection for ordinary questions before considering writes. With the default configuration, every apply tool refuses and sends nothing.</p>
+            <h2 id="read-title">Try a small read first</h2>
+            <p class="lede">Start with a narrow question so you can confirm the connection and see exactly what data reaches Codex.</p>
           </div>
         </div>
         <div class="section-body two-column">
@@ -610,7 +612,7 @@ and verify with `codex mcp get canvas`. Never request my token or make a Canvas 
             <p>Ask for only the fields the task needs. Smaller responses reduce the amount of student information sent to the model.</p>
           </div>
           <aside class="detail-box">
-            <h3>Read-only still handles real data</h3>
+            <h3>Reads still handle real data</h3>
             <p>Anything returned by a Canvas tool reaches the AI model Codex is using. Your institution's policies on student records, personal access tokens, and AI services still apply.</p>
           </aside>
         </div>
@@ -620,69 +622,45 @@ and verify with `codex mcp get canvas`. Never request my token or make a Canvas 
         <div class="section-heading">
           <span class="step-number" aria-hidden="true">5</span>
           <div>
-            <h2 id="writes-title">Add writes later—separately</h2>
-            <p class="lede">Only enable writes after reads work and you understand the safeguards. You can remain read-only indefinitely.</p>
+            <h2 id="writes-title">How changes stay under your control</h2>
+            <p class="lede">The recommended setup includes guarded writes, but that does not give Codex permission to change Canvas silently.</p>
           </div>
         </div>
         <div class="section-body">
           <div class="flow" aria-label="Write safety flow">
             <div>Preview</div><div>You confirm</div><div>Send once</div><div>Read back</div>
           </div>
-          <p class="location-label">Paste this into Codex — not Terminal</p>
-          <h3>Ask Codex to prepare your exact write settings</h3>
-          <p>Codex will inspect your existing setup, make one read-only Canvas connection check, and print only the change you need. It will not edit your configuration or change Canvas.</p>
-          <div class="code-wrap">
-            <pre id="writes-prompt">Help me enable writes in my tagged canvas-mcp checkout at ~/canvas-mcp. Read AGENTS.md, run the
-tests and `connect_canvas.py status`, then run `connect_canvas.py setup-info --writes`. Do not
-edit config.toml or Canvas. Inspect my existing `canvas` MCP entry and print only the exact
-replacement block, preserving unrelated settings and excluding rubrics. Show me how to make a
-unique verified backup, open config.toml in a text editor, replace—not duplicate—the block, and
-restart Codex. Keep top-level `approvals_reviewer = "user"` and the server's
-`default_tools_approval_mode = "writes"`.</pre>
-            <button class="copy-button" type="button" data-copy-target="writes-prompt">Copy prompt</button>
-          </div>
-          <p class="copy-status" role="status" aria-live="polite"></p>
-
           <div class="two-column" style="margin-top: 26px;">
             <div class="detail-box">
-              <h3>Then open one file—not Codex Settings</h3>
-              <p>The current desktop Settings screen does not expose the documented <strong>Open config.toml</strong> control. That control is for the Codex IDE extension.</p>
+              <h3>Every change still needs you</h3>
               <ol>
-                <li>On macOS, open <strong>Terminal</strong> and run the command below. It creates a unique backup, prints its location, and opens the real file in a plain-text editor.</li>
+                <li>Codex prepares the exact request. Nothing changes.</li>
+                <li>You review and approve that specific preview.</li>
+                <li>The server opens its own confirmation inside Codex.</li>
+                <li>Only an explicit acceptance sends the one-time request.</li>
               </ol>
-              <div class="code-wrap">
-                <pre id="open-config-command">backup_dir="$(mktemp -d "$HOME/.codex/canvas-mcp-config-backup.XXXXXX")" &amp;&amp;
-cp -p "$HOME/.codex/config.toml" "$backup_dir/config.toml" &amp;&amp;
-cmp -s "$HOME/.codex/config.toml" "$backup_dir/config.toml" &amp;&amp;
-printf 'Verified backup: %s\n' "$backup_dir/config.toml" &amp;&amp;
-open -t "$HOME/.codex/config.toml"</pre>
-                <button class="copy-button" type="button" data-copy-target="open-config-command">Copy command</button>
-              </div>
-              <ol start="2">
-                <li>In the editor that opens, replace the existing <span class="inline-code">[mcp_servers.canvas]</span> block with the block Codex printed. Do not add a second block.</li>
-                <li>Save the file, close and reopen Codex, then ask Codex to verify the Canvas server configuration.</li>
-              </ol>
-              <p class="microcopy">On Windows, ask Codex for the equivalent PowerShell backup-and-open commands; the complete Windows setup path is not yet tested.</p>
             </div>
             <aside class="detail-box">
-              <h3>Where future confirmations appear</h3>
-              <p>The server requests confirmation through the MCP client. Presentation can vary, so after restarting ask Codex to call <span class="inline-code">canvas_test_confirmation</span>. It exercises the real gate but cannot contact or change Canvas.</p>
+              <h3>Test the confirmation safely</h3>
+              <p>The setup prompt asks Codex to call <span class="inline-code">canvas_test_confirmation</span>. It exercises the real gate but cannot contact or change Canvas.</p>
+              <p>If you want every apply tool to refuse outright, ask Codex to re-register the server using <span class="inline-code">connect_canvas.py setup-info --read-only</span>.</p>
             </aside>
           </div>
-
-          <details class="manual-path">
-            <summary>Advanced: print the settings yourself in Terminal</summary>
-            <p class="location-label manual">Run this in Terminal</p>
-            <div class="code-wrap">
-              <pre id="setup-info-command">cd ~/canvas-mcp
-.venv/bin/python connect_canvas.py setup-info --writes</pre>
-              <button class="copy-button" type="button" data-copy-target="setup-info-command">Copy command</button>
-            </div>
-            <p>This prints the write-only block. Add <span class="inline-code">--enable-rubrics</span> to the command only when you deliberately want rubric tools and their longer timeout.</p>
-          </details>
           <aside class="callout danger"><strong>Never retry an uncertain write.</strong> If a result says <span class="inline-code">WRITE STATUS UNCERTAIN</span>, the request may have reached Canvas even though the response was lost. Inspect the object in Canvas or read it back before doing anything else.</aside>
-          <h3 style="margin-top: 34px;">Rubrics are another explicit opt-in</h3>
-          <p>Add <span class="inline-code">"--enable-rubrics"</span> only if you need rubric creation or guarded batch grading, and set <span class="inline-code">tool_timeout_sec = 600</span>. Rubric grading limits batches to 50 ungraded students, validates the live rubric, re-checks before each write, and reads each result back. By default it moves automatic posting to manual before the first grade. If you deliberately set <span class="inline-code">keep_post_policy=true</span>, it does not make that change and grades may become visible immediately.</p>
+          <h3 style="margin-top: 34px;">Rubric creation is included; batch grading is not</h3>
+          <p>Creating a rubric uses the same preview and confirmation flow and is available in the normal setup. Batch rubric grading remains an advanced opt-in with <span class="inline-code">--enable-rubric-grading</span>. It limits batches to 50 ungraded students, validates the live rubric, re-checks before each write, and reads each result back. By default it moves automatic posting to manual before the first grade.</p>
+          <details class="manual-path">
+            <summary>Enable optional batch rubric grading</summary>
+            <p class="location-label">Paste this short prompt into Codex</p>
+            <div class="code-wrap">
+              <pre id="enable-grading-prompt">In ~/canvas-mcp, read AGENTS.md, run the tests and `connect_canvas.py status`, inspect the
+existing entry with `codex mcp get canvas`, then run
+`connect_canvas.py setup-info --enable-rubric-grading`. Show me the exact replacement command
+and wait. After I approve, re-register that entry and verify it with `codex mcp get canvas`.
+Do not edit config.toml or call Canvas.</pre>
+              <button class="copy-button" type="button" data-copy-target="enable-grading-prompt">Copy prompt</button>
+            </div>
+          </details>
         </div>
       </section>
 
@@ -723,8 +701,8 @@ results and tell me to restart Codex. Do not edit config.toml or call Canvas.</p
             <summary>One-time update from v0.1.0</summary>
             <p>Version 0.1.0 predates <span class="inline-code">update.py</span>. Paste this into Codex once; later releases use Update everything above.</p>
             <div class="code-wrap">
-              <pre id="update-bootstrap-prompt">Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.1. Read AGENTS.md. Verify the
-checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.1 is
+              <pre id="update-bootstrap-prompt">Upgrade my existing ~/canvas-mcp from v0.1.0 to exactly v0.1.2. Read AGENTS.md. Verify the
+checkout is clean, origin is https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.2 is
 contained in origin/main. Show me its commit and changelog, then wait. After I approve, switch
 detached to that exact commit, reinstall ".[test]", run pytest, and run
 `connect_canvas.py install-skill --apply`. Do not edit config.toml, request a token, or call Canvas.</pre>
@@ -748,7 +726,7 @@ detached to that exact commit, reinstall ".[test]", run pytest, and run
           <article class="safety-item"><h3>One locked Canvas host</h3><p>REST requests are locked to the configured HTTPS host and <span class="inline-code">/api/v1</span>. The only path exception is one fixed GraphQL post-policy mutation used by guarded rubric grading. Redirects, other hosts, traversal paths, and credential-management endpoints are refused.</p></article>
           <article class="safety-item"><h3>Token stays out of model-visible input</h3><p>The server reads it directly from the approved operating-system credential store at request time and uses it only in the authorization header.</p></article>
           <article class="safety-item warning"><h3>Student data may reach the model</h3><p>Course data returned by a tool is visible to Codex. Follow your institution's FERPA, privacy, records, and AI-use requirements.</p></article>
-          <article class="safety-item warning"><h3>Community project, early release</h3><p>Version 0.1.1 is not an official Instructure or institutional product. Windows connection support exists, but the complete Windows setup and uninstall path has not been tested on a Windows computer.</p></article>
+          <article class="safety-item warning"><h3>Community project, early release</h3><p>Version 0.1.2 is not an official Instructure or institutional product. Windows connection support exists, but the complete Windows setup and uninstall path has not been tested on a Windows computer.</p></article>
         </div>
       </section>
 

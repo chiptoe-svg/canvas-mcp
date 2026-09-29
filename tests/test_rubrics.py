@@ -170,6 +170,7 @@ def test_create_readback_mismatch_is_uncertain():
     plan = rubrics.prepare_rubric_create(client_for(fake), 1, RUBRIC_DEF)
     result = rubrics.apply_rubric_create(client_for(fake), plan)
     assert result["ok"] is False and result["outcome"] == "uncertain"
+    assert result["do_not_retry"] is True and result["error"].startswith("WRITE STATUS UNCERTAIN:")
 
 
 def test_create_attach_with_grading_on_is_uncertain():
@@ -306,6 +307,19 @@ def test_uncertain_student_write_is_never_retried(mode):
     assert report["written"] == [101] and report["not_attempted"] == [103]
     assert "UNCERTAIN" in report["error"] and report["do_not_retry"] is True
     assert course.events.count(("put", 102)) == 1 and ("put", 103) not in course.events
+
+
+def test_non_object_submission_readback_after_grade_is_uncertain():
+    course = Course(post_manually=True)
+    path = "/api/v1/courses/1/assignments/20/submissions/101"
+    course.fake.route("GET", path, lambda f, r: (
+        (200, [1]) if course.subs[101]["rubric_assessment"] is not None
+        else (200, copy.deepcopy(course.subs[101]))))
+    plan = rubrics.prepare_rubric_grading(course.client, 1, 20, [entry(101, grade=12)])
+    report = rubrics.apply_rubric_grading(course.client, plan)
+    assert course.events == [("put", 101)]
+    assert report["outcome"] == "uncertain" and report["uncertain_student"] == 101
+    assert report["do_not_retry"] is True and "WRITE STATUS UNCERTAIN" in report["error"]
 
 
 def test_rubric_changed_after_preview_writes_nothing():

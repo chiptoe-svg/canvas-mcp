@@ -222,11 +222,11 @@ def _toml_string(value: str) -> str:
     return json.dumps(value)
 
 
-def advanced_config(python: str, server: str, *, enable_rubrics: bool = False) -> str:
+def advanced_config(python: str, server: str, *, enable_rubric_grading: bool = False) -> str:
     """A complete TOML fragment with the top-level setting before any table."""
     arguments = [server, "--writes", "confirm"]
-    if enable_rubrics:
-        arguments.append("--enable-rubrics")
+    if enable_rubric_grading:
+        arguments.append("--enable-rubric-grading")
     lines = [
         'approvals_reviewer = "user"',
         "",
@@ -235,7 +235,7 @@ def advanced_config(python: str, server: str, *, enable_rubrics: bool = False) -
         "args = [%s]" % ", ".join(_toml_string(value) for value in arguments),
         'default_tools_approval_mode = "writes"',
     ]
-    if enable_rubrics:
+    if enable_rubric_grading:
         lines.insert(-1, "tool_timeout_sec = 600")
     return "\n".join(lines)
 
@@ -249,16 +249,18 @@ def cmd_setup_info(args) -> int:
     print("This command only prints instructions; it does not edit your Codex configuration.\n")
     print("Connect Canvas (run this yourself so the token stays in the hidden terminal prompt):")
     print("  %s\n" % config.connect_command())
-    print("Read-only Codex setup (recommended first):")
-    print("  %s\n" % config.shell_command(["codex", "mcp", "add", "canvas", "--", python, server]))
+    read_only = getattr(args, "read_only", False)
+    enable_grading = getattr(args, "enable_rubric_grading", False)
+    server_args = [python, server]
+    if not read_only:
+        server_args.extend(["--writes", "confirm"])
+    if enable_grading:
+        server_args.append("--enable-rubric-grading")
+    label = "Read-only Codex setup:" if read_only else "Guarded-write Codex setup (recommended):"
+    print(label)
+    print("  %s\n" % config.shell_command(["codex", "mcp", "add", "canvas", "--", *server_args]))
     print("Verify after adding it:")
     print("  codex mcp get canvas\n")
-    if getattr(args, "writes", False):
-        label = "Optional writes + rubric tools" if getattr(args, "enable_rubrics", False) else "Optional writes"
-        print("%s (advanced; merge carefully, do not append blindly)." % label)
-        print("The first line below must stay before every [table] in config.toml:")
-        print(advanced_config(python, server,
-                              enable_rubrics=getattr(args, "enable_rubrics", False)) + "\n")
     print("Install this release's matching Codex skill (preview first):")
     print("  %s" % config.shell_command([python, Path(__file__).resolve(), "install-skill"]))
     print("Skill source: %s" % skill)
@@ -453,16 +455,19 @@ def main(argv=None) -> int:
     for name in ("connect", "status", "reconnect", "disconnect"):
         sub.add_parser(name)
     setup_parser = sub.add_parser("setup-info")
-    setup_parser.add_argument("--writes", action="store_true",
-                              help="print the optional write-enabled configuration block")
-    setup_parser.add_argument("--enable-rubrics", action="store_true",
-                              help="include optional rubric tools (requires --writes)")
+    setup_parser.add_argument("--read-only", action="store_true",
+                              help="print a strict read-only registration command instead")
+    setup_parser.add_argument("--enable-rubric-grading", action="store_true",
+                              help="include the optional batch rubric grading tools")
+    setup_parser.add_argument("--writes", action="store_true", help=argparse.SUPPRESS)
+    setup_parser.add_argument("--enable-rubrics", dest="enable_rubric_grading",
+                              action="store_true", help=argparse.SUPPRESS)
     install_parser = sub.add_parser("install-skill")
     install_parser.add_argument("--apply", action="store_true",
                                 help="install after previewing; backs up an existing skill")
     args = parser.parse_args(argv)
-    if getattr(args, "enable_rubrics", False) and not getattr(args, "writes", False):
-        parser.error("--enable-rubrics requires --writes")
+    if getattr(args, "enable_rubric_grading", False) and getattr(args, "read_only", False):
+        parser.error("--enable-rubric-grading cannot be used with --read-only")
     try:
         if args.command == "connect":
             return cmd_connect(args)

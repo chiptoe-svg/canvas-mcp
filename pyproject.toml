@@ -1,6 +1,6 @@
 [project]
 name = "canvas-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "A local stdio MCP server for your own Canvas account, for use with Codex."
 readme = "README.md"
 requires-python = ">=3.10"
