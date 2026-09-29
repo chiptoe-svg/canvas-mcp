@@ -6,7 +6,8 @@ example changed, because those are copied by hand.
 
 ## Unreleased
 
-No changes yet.
+- Removed the hero tagline from the GitHub Pages guide and shortened its title to “Safe Codex
+  Access into Canvas.” `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
 
 ## [0.1.1] - 2026-09-28
 
