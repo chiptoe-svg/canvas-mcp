@@ -6,6 +6,9 @@ example changed, because those are copied by hand.
 
 ## Unreleased
 
+- Removed the “Community project, early release” card from the landing page; this is currently a
+  single-maintainer project. `SKILL.md` and the config example are unchanged.
+
 ## [0.1.2] - 2026-09-28
 
 - Made guarded writes and rubric creation part of the recommended setup, while keeping batch
