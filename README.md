@@ -7,6 +7,10 @@ service, not an app your institution runs, and nobody supports it for you.
 **New here?** Use the [visual setup guide](https://chiptoe-svg.github.io/canvas-mcp/) for a
 step-by-step installation, write opt-in, safety, and uninstall walkthrough.
 
+**Install from a computer, not a phone or tablet.** The guide is responsive so it is readable on
+any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python,
+and a terminal are available.
+
 - **Local only.** Codex starts it as a child process over stdio. There is no server to host, no
   open port, no tunnel, no background service, and no OAuth app.
 - **Your account, your token.** You create a Canvas personal access token and it is stored only
@@ -59,8 +63,10 @@ or list access tokens and developer keys, because they would put a credential in
 ## Set up with Codex
 
 The easiest setup is to let Codex do the mechanical work while you keep control of the one
-secret step. Paste the prompt below into a **local** Codex task. It installs a tagged source
-checkout, not a global application: there is no daemon, open port, telemetry or auto-update.
+secret step. On the Mac or Windows computer where Codex runs, paste the prompt below into a
+**local** Codex task. A phone or tablet can display these instructions but cannot perform the
+installation. It installs a tagged source checkout, not a global application: there is no daemon,
+open port, telemetry or auto-update.
 
 ```text
 Set up canvas-mcp release v0.1.0 from https://github.com/chiptoe-svg/canvas-mcp.git in

@@ -17,6 +17,9 @@ example changed, because those are copied by hand.
   the Codex IDE extension, not the current desktop Settings screen. The guide now gives a macOS
   command that creates a unique backup and opens the real configuration in a plain-text editor.
   `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
+- The README and GitHub Pages guide now state prominently that phones and tablets can display the
+  responsive guide but cannot install canvas-mcp; setup requires the Mac or Windows computer
+  running local Codex. `SKILL.md` and `examples/codex-mcp-config.example.toml` are unchanged.
 - `uninstall.py` now checks nested release directories against an explicit file manifest, so an
   unrelated file placed inside `docs/`, `examples/`, `extensions/` or `tests/` keeps the project
   folder from being deleted.

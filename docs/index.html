@@ -307,6 +307,7 @@
     .callout strong { color: #493100; }
     .callout.danger { border-color: var(--red-dark); background: #fff5f4; color: #6b2925; }
     .callout.danger strong { color: #5c1d19; }
+    .hero .device-note { margin: 0 0 24px; }
     .flow {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -458,6 +459,7 @@
         <p class="eyebrow">For instructors, not systems administrators</p>
         <h1 id="hero-title">Give Codex a safe way into <span>your Canvas.</span></h1>
         <p class="hero-copy"><strong>canvas-mcp</strong> is a small local source project that connects Codex to your own Canvas account. Start read-only. Add writes only if—and when—you choose.</p>
+        <aside class="callout device-note"><strong>Install from your computer—not a phone or tablet.</strong> You can read this guide on any device, but setup must happen on the Mac or Windows computer where local Codex, Git, Python, and Terminal are available.</aside>
         <div class="actions">
           <button class="button primary" type="button" data-copy-target="setup-prompt">Copy the setup prompt</button>
           <a class="button secondary" href="https://github.com/chiptoe-svg/canvas-mcp">View source on GitHub</a>
@@ -528,7 +530,7 @@
           <span class="step-number" aria-hidden="true">2</span>
           <div>
             <h2 id="install-title">Let Codex install the tagged source</h2>
-            <p class="lede">Paste one prompt into a <strong>local</strong> Codex task. Codex checks the release tag, creates an isolated Python environment, runs the tests, and stops before the secret step.</p>
+            <p class="lede">On the Mac or Windows computer where Codex runs, paste one prompt into a <strong>local</strong> Codex task. A phone or tablet can display this guide but cannot perform the installation. Codex checks the release tag, creates an isolated Python environment, runs the tests, and stops before the secret step.</p>
           </div>
         </div>
         <div class="section-body">
