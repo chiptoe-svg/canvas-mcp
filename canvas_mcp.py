@@ -35,7 +35,7 @@ import config
 from canvas_client import CanvasClient, CanvasError, WRITE_METHODS, build_url, normalize_path, project
 from extensions.rubrics import RubricError
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DEFAULT_PREVIEW_TTL = 600            # seconds a preview stays valid
 SUMMARY_KEYS = ("id", "name", "title", "display_name", "workflow_state", "published",
                 "due_at", "html_url", "updated_at")
@@ -269,6 +269,18 @@ class Tools:
             result = {"ok": False, "outcome": "refused", "error": str(err)}
         return client.scrub(result) if client else result
 
+    async def test_confirmation(self, ctx: Any) -> dict:
+        """Exercise the real approval gate without creating or sending a Canvas request."""
+        try:
+            await require_approval(
+                self.writes, ctx,
+                "Confirmation test only. No Canvas request has been prepared and accepting this "
+                "test cannot change Canvas. Check confirm to verify the dialog.")
+            return {"ok": True, "outcome": "confirmed", "canvas_changed": False}
+        except ApprovalRequired as err:
+            return {"ok": False, "outcome": "refused", "canvas_changed": False,
+                    "error": str(err)}
+
     # -- rubric extension ------------------------------------------------------------------
     def prepare_rubric(self, kind: str, fn: Callable[[CanvasClient], dict]) -> dict:
         client = None
@@ -329,6 +341,8 @@ def _approval_text(client: CanvasClient, payload: dict) -> str:
 READ_ONLY = dict(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=True)
 PREPARE = dict(read_only_hint=True, destructive_hint=False, idempotent_hint=False, open_world_hint=True)
 APPLY = dict(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=True)
+LOCAL_TEST = dict(read_only_hint=True, destructive_hint=False, idempotent_hint=True,
+                  open_world_hint=False)
 
 
 def build_server(tools: Tools, enable_rubrics: bool = False):
@@ -369,6 +383,16 @@ def build_server(tools: Tools, enable_rubrics: bool = False):
         the object back and tell the person what Canvas holds.
         """
         return await tools.apply_write(preview_id, ctx)
+
+    @server.tool(annotations=ToolAnnotations(title="Test the confirmation dialog (no Canvas change)",
+                                             **LOCAL_TEST))
+    async def canvas_test_confirmation(ctx: Context) -> dict:
+        """Open the real write-confirmation gate without making any request to Canvas.
+
+        Use after enabling ``--writes confirm`` to verify that the current Codex client displays
+        the server-side confirmation. Accepting or declining this test never changes Canvas.
+        """
+        return await tools.test_confirmation(ctx)
 
     if enable_rubrics:
         from extensions import rubrics

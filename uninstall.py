@@ -40,9 +40,9 @@ import config
 PROJECT_MARKERS = ("canvas_mcp.py", "connect_canvas.py", "canvas_client.py", "config.py", "uninstall.py")
 # Everything a release ships at the top level, plus what setup and tests create. A folder
 # holding anything else is not deleted. tests/test_uninstall.py checks this list is complete.
-RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SKILL.md", "AGENTS.md", "pyproject.toml", ".gitignore",
+RELEASE_ENTRIES = {"README.md", "CHANGELOG.md", "SECURITY_REVIEW.md", "SKILL.md", "AGENTS.md", "pyproject.toml", ".gitignore",
                    "canvas_mcp.py", "canvas_client.py", "config.py", "connect_canvas.py",
-                   "uninstall.py", "extensions", "tests", "examples", "docs"}
+                   "uninstall.py", "update.py", "extensions", "tests", "examples", "docs"}
 RELEASE_NESTED_FILES = {
     "docs/index.html",
     "examples/codex-mcp-config.example.toml",
@@ -56,6 +56,7 @@ RELEASE_NESTED_FILES = {
     "tests/test_rubrics.py",
     "tests/test_server.py",
     "tests/test_uninstall.py",
+    "tests/test_update.py",
 }
 RELEASE_DIRECTORIES = {name.split("/", 1)[0] for name in RELEASE_NESTED_FILES}
 GENERATED_ENTRIES = {".git", ".venv", "__pycache__", ".pytest_cache", "canvas_mcp.egg-info",
@@ -279,7 +280,11 @@ def remove_tree(path: Path) -> str:
 
 
 def remove_project(project: Path) -> str:
-    """Delete the folder, its marker files last, so an interrupted run can simply be rerun."""
+    """Delete marker files last so the folder remains identifiable until the final phase.
+
+    An interruption during that final marker loop can leave a partial folder that needs manual
+    cleanup; the safety check may correctly refuse it because it is no longer a complete project.
+    """
     try:
         for child in project.iterdir():
             if child.name not in PROJECT_MARKERS:

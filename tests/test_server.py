@@ -220,6 +220,29 @@ def test_modern_protocol_mode_also_gates():
     assert out["ok"] is False and fake.writes() == []
 
 
+def test_confirmation_check_uses_same_gate_without_contacting_canvas():
+    fake = course_fake()
+    server = canvas_mcp.build_server(tools_for(fake))
+
+    out, seen = call(server, "canvas_test_confirmation", {}, elicit=ACCEPT)
+
+    assert out == {"ok": True, "outcome": "confirmed", "canvas_changed": False}
+    assert len(seen) == 1 and "test only" in seen[0].message.lower()
+    assert fake.requests == []
+
+
+def test_confirmation_check_decline_is_safe_and_writes_off_does_not_prompt():
+    fake = course_fake()
+    declined, _ = call(canvas_mcp.build_server(tools_for(fake)),
+                       "canvas_test_confirmation", {},
+                       elicit=lambda p: types.ElicitResult(action="decline"))
+    disabled, seen = call(canvas_mcp.build_server(tools_for(fake, writes="off")),
+                          "canvas_test_confirmation", {}, elicit=ACCEPT)
+
+    assert declined["ok"] is False and disabled["ok"] is False
+    assert seen == [] and fake.requests == []
+
+
 # -------------------------------------------------------------------------- token secrecy
 def test_token_never_appears_in_any_tool_output():
     leaky = FakeCanvas({
@@ -248,7 +271,8 @@ def test_tool_annotations_are_accurate():
 
 def test_rubric_tools_are_absent_unless_enabled():
     names = {t.name for t in anyio.run(canvas_mcp.build_server(tools_for(course_fake())).list_tools)}
-    assert names == {"canvas_read", "canvas_prepare_write", "canvas_apply_write"}
+    assert names == {"canvas_read", "canvas_prepare_write", "canvas_apply_write",
+                     "canvas_test_confirmation"}
 
 
 def test_default_write_mode_is_off():

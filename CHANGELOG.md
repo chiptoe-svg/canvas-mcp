@@ -6,6 +6,10 @@ example changed, because those are copied by hand.
 
 ## Unreleased
 
+No changes yet.
+
+## [0.1.1] - 2026-09-28
+
 - Added a framework-free GitHub Pages guide covering beginner setup, the read-only-first flow,
   optional writes and rubrics, safety boundaries, and uninstall. `SKILL.md` and
   `examples/codex-mcp-config.example.toml` are unchanged.
@@ -23,6 +27,19 @@ example changed, because those are copied by hand.
 - `uninstall.py` now checks nested release directories against an explicit file manifest, so an
   unrelated file placed inside `docs/`, `examples/`, `extensions/` or `tests/` keeps the project
   folder from being deleted.
+- Added `update.py check/apply` and `connect_canvas.py install-skill` so tested project code—not
+  long prose prompts—validates release tags, protects local work, backs up the installed skill,
+  and keeps the tagged server and skill together. `SKILL.md` now mentions the safe confirmation
+  check; `examples/codex-mcp-config.example.toml` is unchanged.
+- Added `canvas_test_confirmation`, which exercises the real server-side MCP elicitation gate but
+  cannot create or send a Canvas request. Documentation no longer claims a particular desktop UI
+  presentation before this safe check is run in that client.
+- Split `connect_canvas.py setup-info` so read-only output is the default, `--writes` prints only
+  the write settings, and `--enable-rubrics` is an additional explicit opt-in.
+- Bumped the package, MCP server, and HTTP user-agent versions together to 0.1.1.
+- Added a durable security-review record for the connection rollback, nested uninstall manifest,
+  skill installer, and updater. Destructive probes used scratch copies and fake credentials; the
+  record discloses one accidental read-only scan of the maintainer's Codex config.
 
 ## [0.1.0] - 2026-09-28
 

@@ -20,6 +20,8 @@ safety rules itself; this skill is how to work well within them.
   the object back and tell the person what Canvas now holds.
 - If a result says writes are disabled, show the person the prepared change so they can make it
   in Canvas themselves. Do not look for another way to write.
+- After writes are first enabled in a Codex client, use `canvas_test_confirmation()` if the person
+  wants to verify the confirmation UI without contacting or changing Canvas.
 
 ## Summarise activity (read-only)
 
