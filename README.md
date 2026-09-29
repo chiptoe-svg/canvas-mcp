@@ -93,13 +93,13 @@ installation. It installs a tagged source checkout, not a global application: th
 open port, telemetry or auto-update.
 
 ```text
-Install canvas-mcp v0.1.3 on this local computer. First identify the host environment. Support
-macOS Terminal and native Windows PowerShell; stop if this is Linux or WSL. Clone exactly v0.1.3
+Install canvas-mcp v0.1.4 on this local computer. First identify the host environment. Support
+macOS Terminal and native Windows PowerShell; stop if this is Linux or WSL. Clone exactly v0.1.4
 from https://github.com/chiptoe-svg/canvas-mcp.git into `~/canvas-mcp` on macOS or
 `$HOME\canvas-mcp` on Windows.
 Never substitute main, and do not overwrite an existing folder.
-Immediately after cloning, run `python3 update.py verify v0.1.3` on macOS or
-`py update.py verify v0.1.3` in PowerShell and stop unless it prints `Verified exact release`.
+Immediately after cloning, run `python3 update.py verify v0.1.4` on macOS or
+`py update.py verify v0.1.4` in PowerShell and stop unless it prints `Verified exact release`.
 Then read AGENTS.md, create .venv, install ".[test]", and run pytest. Use `.venv/bin/python` on
 macOS or `.\.venv\Scripts\python.exe` on Windows for every later project command. Run
 `connect_canvas.py status`. If disconnected, give me the connection command for Terminal or
@@ -128,9 +128,9 @@ Windows PowerShell: `.\.venv\Scripts\python.exe connect_canvas.py setup-info`
 You need Python 3.10 or newer (`python3 --version`) and Git.
 
 ```sh
-git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.4 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
-python3 update.py verify v0.1.3
+python3 update.py verify v0.1.4
 python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
@@ -156,9 +156,9 @@ python.org and Git for Windows. Use native
 **PowerShell**, not WSL: WSL is Linux, and canvas-mcp intentionally refuses Linux keyring backends.
 
 ```powershell
-git clone --branch v0.1.3 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
+git clone --branch v0.1.4 --depth 1 https://github.com/chiptoe-svg/canvas-mcp.git
 cd canvas-mcp
-py update.py verify v0.1.3
+py update.py verify v0.1.4
 py -m venv .venv
 .\.venv\Scripts\pip install -e .
 ```
@@ -390,10 +390,10 @@ Canvas. Stop if this is Linux or WSL.
 prompt once; later releases use the command above:
 
 ```text
-Upgrade my existing canvas-mcp checkout from v0.1.0 to exactly v0.1.3. It is at
+Upgrade my existing canvas-mcp checkout from v0.1.0 to exactly v0.1.4. It is at
 `~/canvas-mcp` on macOS or `$HOME\canvas-mcp` in native Windows PowerShell. Stop on Linux or WSL.
 Read AGENTS.md. Verify the checkout is clean, origin is
-https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.3 is contained in origin/main.
+https://github.com/chiptoe-svg/canvas-mcp.git, and remote v0.1.4 is contained in origin/main.
 Show me its commit and changelog, then wait. After I approve, switch detached to that exact
 commit, reinstall ".[test]", run pytest, and run `connect_canvas.py install-skill --apply` with
 the checkout's virtual-environment Python. Do not edit config.toml, request a token, or call Canvas.
@@ -411,7 +411,7 @@ are for macOS Terminal; in Windows PowerShell, use `.\.venv\Scripts\pip` and
 cd canvas-mcp
 git status                  # stop and ask Codex for help if this shows local edits
 git fetch --tags
-git switch --detach v0.1.3  # replace with the release you reviewed
+git switch --detach v0.1.4  # replace with the release you reviewed
 .venv/bin/pip install -e .  # picks up any new dependency
 .venv/bin/pytest            # optional: confirm it still passes
 ```

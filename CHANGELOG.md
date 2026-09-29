@@ -6,6 +6,8 @@ example changed, because users install or copy those separately.
 
 ## Unreleased
 
+## [0.1.4] - 2026-09-29
+
 - Replaced the write-confirmation dialog's lone boolean “Confirm” field with explicit
   **Apply this exact change** and **Do not apply** choices. The server still requires an exact
   positive value, defaults to Do not apply, and fails closed for Skip, cancel, missing, malformed,
@@ -29,6 +31,7 @@ example changed, because users install or copy those separately.
   landing page. Ordinary reads now use registered Canvas tools without the skill; its write/rubric
   workflows forbid memory, shell, direct-API, and hand-built MCP-client fallbacks. The config
   example is unchanged.
+- Bumped the package, MCP server, and HTTP user-agent versions together to 0.1.4.
 
 ## [0.1.3] - 2026-09-28
 
